@@ -1,43 +1,65 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
     package="com.wepink.metroar">
-
     <!-- Declare necessary permissions -->
     <uses-permission android:name="android.permission.CAMERA" />
-    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />   <!-- ADD THIS -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" /> <!-- ADD THIS -->
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" /> <!-- ADD THIS -->
-
-    <!-- WRITE_EXTERNAL_STORAGE is generally not needed for API 29+ when using MediaStore
+    <!--
+ WRITE_EXTERNAL_STORAGE is generally not needed for API 29+ when using MediaStore
          or app-specific directories, but keeping it with maxSdkVersion="28" is fine
-         for compatibility if you had older code paths. -->
-    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"
-        android:maxSdkVersion="28" />
-
-    <!-- Declare features your app uses -->
+         for compatibility if you had older code paths.
+    -->
+    <uses-permission
+        android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+        android:maxSdkVersion="28" /> <!-- Declare features your app uses -->
     <uses-feature android:name="android.hardware.camera.any" /> <!-- Allows devices without a back camera but with a front one -->
-    <uses-feature android:name="android.hardware.camera" android:required="true" />
-    <uses-feature android:name="android.hardware.location.gps" android:required="false" /> <!-- gps is a more specific location feature -->
-    <uses-feature android:name="android.hardware.location" android:required="false" /> <!-- General location feature -->
-    <uses-feature android:name="android.hardware.sensor.gyroscope" android:required="false" />
-    <uses-feature android:name="android.hardware.sensor.accelerometer" android:required="false" />
-    <uses-feature android:name="android.hardware.sensor.compass" android:required="false" />
-
+    <uses-feature
+        android:name="android.hardware.camera"
+        android:required="true" />
+    <uses-feature
+        android:name="android.hardware.location.gps"
+        android:required="false" /> <!-- gps is a more specific location feature -->
+    <uses-feature
+        android:name="android.hardware.location"
+        android:required="false" /> <!-- General location feature -->
+    <uses-feature
+        android:name="android.hardware.sensor.gyroscope"
+        android:required="false" />
+    <uses-feature
+        android:name="android.hardware.sensor.accelerometer"
+        android:required="false" />
+    <uses-feature
+        android:name="android.hardware.sensor.compass"
+        android:required="false" />
 
     <application
         android:allowBackup="true"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:fullBackupContent="@xml/backup_rules"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
-        android:theme="@style/Theme.MetroAR"> <!-- Ensure your theme is correct -->
+        android:theme="@style/Theme.MetroAR"
+        tools:targetApi="31">
+
         <activity
-            android:name=".MainActivity"
-            android:exported="true">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
-        </activity>
+            android:name=".LoginActivity"
+            android:exported="true"
+            android:theme="@style/Theme.MetroAR">
+        <intent-filter>
+            <action android:name="android.intent.action.MAIN" />
+            <category android:name="android.intent.category.LAUNCHER" />
+        </intent-filter>
+    </activity>
+
+    <activity
+        android:name=".MainActivity"
+        android:exported="true">
+</activity>
+
     </application>
 
 </manifest>
