@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Galeria</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body data-folders='<%= JSON.stringify(folders) %>'>
+
+<h1>Galeria</h1>
+
+<div class="controls">
+  <button id="showFolders">Ver Pastas</button>
+  <button id="showUpload">Upload de Imagens</button>
+  <button id="enableDelete" class="hidden">Excluir Imagens</button>
+</div>
+
+<!-- Pastas existentes -->
+<div class="folders hidden">
+  <h2>Pastas</h2>
+  <ul id="foldersList"></ul>
+</div>
+
+<!-- Visualização de imagens de uma pasta -->
+<div class="images hidden">
+  <h2 id="folderTitle"></h2>
+  <button id="backToFolders">Voltar para Pastas</button>
+  <div class="grid" id="imagesGrid"></div>
+</div>
+
+<!-- Upload -->
+<div class="upload hidden">
+  <h2>Upload de Imagens</h2>
+  <form id="uploadForm" action="/upload" method="POST" enctype="multipart/form-data">
+    <label>Escolher pasta existente:</label>
+    <select name="folder" id="folderSelect">
+      <option value="">-- selecione --</option>
+      <% folders.forEach(f => { %>
+        <option value="<%= f %>"><%= f %></option>
+      <% }) %>
+    </select>
+    <br><br>
+    <label>Ou criar nova pasta:</label>
+    <input type="text" name="newFolder" id="newFolder" placeholder="Nova pasta">
+    <br><br>
+    <input type="file" name="images" accept="image/*" multiple id="fileInput" required>
+    <div id="preview" class="preview"></div>
+    <br>
+    <button type="submit">Enviar</button>
+  </form>
+</div>
+
+<script src="script.js"></script>
+</body>
+</html>
