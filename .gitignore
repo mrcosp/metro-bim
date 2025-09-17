@@ -1,3 +1,26 @@
-.DS_Store
+# Node.js
 node_modules/
+npm-debug.log
+yarn-error.log
+
+# Modelo IA
+*.pt
+
+# Ambiente virtual Python
+venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Pastas de resultados e temporários
+temp/
+results/
+
+# Arquivos de configuração do sistema
+.DS_Store
+Thumbs.db
 .env
+
+# Logs
+*.log
