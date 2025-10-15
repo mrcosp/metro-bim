@@ -134,9 +134,10 @@ app.get("/inference/:id", async (req, res) => {
     if (!fs.existsSync(resultsDir)) fs.mkdirSync(resultsDir, { recursive: true });
 
     // Rodar script Python
+    // const py = spawn(path.join(__dirname, "venv", "Scripts", "python.exe"), [
     const py = spawn(path.join(__dirname, "venv", "bin", "python3"), [
       "inference_test.py",
-      "--model_path", "weights_26.pt",
+      "--model_path", "var_2plus_weights_28.pt",
       "--image_path", path.join(__dirname, "temp", `${imageId}.jpg`),
       "--output_dir", resultsDir,
       "--channels", "4"
