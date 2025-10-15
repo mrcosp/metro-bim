@@ -58,7 +58,7 @@ function Home({ onLogout }) {
   const [showNewProjectModal, setShowNewProjectModal] = useState(false);
   const [newProjectName, setNewProjectName] = useState('');
 
-  // Filtrar pastas baseado na busca
+  // Filtrar pastas aseado na busca
   const filteredFolders = folders.filter(folder =>
     folder.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
