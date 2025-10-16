@@ -6,6 +6,7 @@ torchaudio==2.2.0+cu121
 # Manipulação de imagens e dados
 numpy
 Pillow
+matplotlib
 
 # Para seu backend/testes Python
 flask

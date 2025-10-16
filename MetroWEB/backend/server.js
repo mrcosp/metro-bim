@@ -3,6 +3,9 @@ import bodyParser from "body-parser";
 import mongoose from "mongoose";
 import multer from "multer";
 import dotenv from "dotenv";
+import bcrypt from 'bcryptjs';
+import adminAuth from './middleware/adminAuth.js';
+import User from './models/User.js';
 import path, { dirname } from "path";
 import { fileURLToPath } from "url";
 
@@ -15,6 +18,18 @@ const resultsDir = path.join(__dirname, "results");
 if (!fs.existsSync(resultsDir)) fs.mkdirSync(resultsDir, { recursive: true });
 
 const app = express();
+
+// Request logging middleware (helps debugging incoming requests)
+app.use((req, res, next) => {
+  console.log(`${new Date().toISOString()} ${req.method} ${req.url}`);
+  next();
+});
+
+// Health endpoint for quick readiness checks
+app.get('/health', (req, res) => {
+  console.log('Handling /health request');
+  res.json({ status: 'ok' });
+});
 
 // Servir a pasta TesteFotos como estática
 app.use('/results', express.static(path.join(__dirname, 'results')));
@@ -44,6 +59,72 @@ mongoose.connect(process.env.MONGO_URL)
 
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
+
+// Admin routes: manage users (protected by ADMIN_TOKEN)
+console.log('Registering admin routes...');
+// List users
+app.get('/admin/users', adminAuth, async (req, res) => {
+  try {
+    const users = await User.find().select('-passwordHash');
+    res.json(users);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Erro ao listar usuários' });
+  }
+});
+
+// Create user
+app.post('/admin/users', adminAuth, async (req, res) => {
+  try {
+    const { username, email, password, active } = req.body;
+    if (!username || !email || !password) return res.status(400).json({ error: 'username, email e password são obrigatórios' });
+
+    const existing = await User.findOne({ $or: [{ username }, { email }] });
+    if (existing) return res.status(409).json({ error: 'Usuário ou e-mail já existe' });
+
+    const saltRounds = 10;
+    const passwordHash = await bcrypt.hash(password, saltRounds);
+
+    const user = new User({ username, email, passwordHash, active: active !== undefined ? !!active : true });
+    await user.save();
+    const out = user.toObject();
+    delete out.passwordHash;
+    res.status(201).json(out);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Erro ao criar usuário' });
+  }
+});
+
+// Toggle active or update user (partial)
+app.patch('/admin/users/:id', adminAuth, async (req, res) => {
+  try {
+    const updates = {};
+    if (req.body.username) updates.username = req.body.username;
+    if (req.body.email) updates.email = req.body.email;
+    if (req.body.password) updates.passwordHash = await bcrypt.hash(req.body.password, 10);
+    if (req.body.active !== undefined) updates.active = !!req.body.active;
+
+    const user = await User.findByIdAndUpdate(req.params.id, updates, { new: true }).select('-passwordHash');
+    if (!user) return res.status(404).json({ error: 'Usuário não encontrado' });
+    res.json(user);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Erro ao atualizar usuário' });
+  }
+});
+
+// Delete user
+app.delete('/admin/users/:id', adminAuth, async (req, res) => {
+  try {
+    const user = await User.findByIdAndDelete(req.params.id);
+    if (!user) return res.status(404).json({ error: 'Usuário não encontrado' });
+    res.json({ ok: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Erro ao deletar usuário' });
+  }
+});
 
 // Multer para upload em memória (não salva no disco)
 const storage = multer.memoryStorage();
@@ -134,7 +215,8 @@ app.get("/inference/:id", async (req, res) => {
     if (!fs.existsSync(resultsDir)) fs.mkdirSync(resultsDir, { recursive: true });
 
     // Rodar script Python
-    const py = spawn(path.join(__dirname, "venv", "bin", "python3"), [
+    const py = spawn(path.join(__dirname, "venv", "Scripts", "python.exe"), [
+    // const py = spawn(path.join(__dirname, "venv", "bin", "python3"), [ // Linux/Mac
       "inference_test.py",
       "--model_path", "weights_26.pt",
       "--image_path", path.join(__dirname, "temp", `${imageId}.jpg`),
