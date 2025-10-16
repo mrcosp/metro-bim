@@ -7,7 +7,13 @@ export default function adminAuth(req, res, next) {
   if (!adminToken) return res.status(500).json({ error: 'Admin token not configured' });
 
   // Check header x-admin-token or Authorization: Bearer <token>
-  const headerToken = req.headers['x-admin-token'] || (req.headers.authorization && req.headers.authorization.split(' ')[1]);
+  let headerToken = req.headers['x-admin-token'];
+  if (!headerToken && typeof req.headers.authorization === 'string') {
+    const authHeader = req.headers.authorization;
+    if (authHeader.startsWith('Bearer ')) {
+      headerToken = authHeader.slice(7).trim();
+    }
+  }
   if (!headerToken || headerToken !== adminToken) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
