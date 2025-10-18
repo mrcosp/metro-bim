@@ -63,9 +63,10 @@ app.use(bodyParser.json());
 // Admin routes: manage users (protected by ADMIN_TOKEN)
 console.log('Registering admin routes...');
 // List users
-app.get('/admin/users', adminAuth, async (req, res) => {
+app.get('/admin/tbusuario', adminAuth, async (req, res) => {
   try {
-    const users = await User.find().select('-passwordHash');
+    // Return all users, but do not expose cpfHash
+    const users = await User.find().select('-cpfHash');
     res.json(users);
   } catch (err) {
     console.error(err);
@@ -73,22 +74,22 @@ app.get('/admin/users', adminAuth, async (req, res) => {
   }
 });
 
-// Create user
-app.post('/admin/users', adminAuth, async (req, res) => {
+// Create user (email + cpf). Only admin may create users.
+app.post('/admin/tbusuario', adminAuth, async (req, res) => {
   try {
-    const { username, email, password, active } = req.body;
-    if (!username || !email || !password) return res.status(400).json({ error: 'username, email e password são obrigatórios' });
+    const { email, cpf, isAdmin, active } = req.body;
+    if (!email || !cpf) return res.status(400).json({ error: 'email e cpf são obrigatórios' });
 
-    const existing = await User.findOne({ $or: [{ username }, { email }] });
-    if (existing) return res.status(409).json({ error: 'Usuário ou e-mail já existe' });
+    const existing = await User.findOne({ email });
+    if (existing) return res.status(409).json({ error: 'E-mail já existe' });
 
     const saltRounds = 10;
-    const passwordHash = await bcrypt.hash(password, saltRounds);
+    const cpfHash = await bcrypt.hash(cpf, saltRounds);
 
-    const user = new User({ username, email, passwordHash, active: active !== undefined ? !!active : true });
+    const user = new User({ email, cpfHash, isAdmin: !!isAdmin, active: active !== undefined ? !!active : true });
     await user.save();
     const out = user.toObject();
-    delete out.passwordHash;
+    delete out.cpfHash;
     res.status(201).json(out);
   } catch (err) {
     console.error(err);
@@ -97,15 +98,15 @@ app.post('/admin/users', adminAuth, async (req, res) => {
 });
 
 // Toggle active or update user (partial)
-app.patch('/admin/users/:id', adminAuth, async (req, res) => {
+app.patch('/admin/tbusuario/:id', adminAuth, async (req, res) => {
   try {
     const updates = {};
-    if (req.body.username) updates.username = req.body.username;
     if (req.body.email) updates.email = req.body.email;
-    if (req.body.password) updates.passwordHash = await bcrypt.hash(req.body.password, 10);
+    if (req.body.cpf) updates.cpfHash = await bcrypt.hash(req.body.cpf, 10);
+    if (req.body.isAdmin !== undefined) updates.isAdmin = !!req.body.isAdmin;
     if (req.body.active !== undefined) updates.active = !!req.body.active;
 
-    const user = await User.findByIdAndUpdate(req.params.id, updates, { new: true }).select('-passwordHash');
+    const user = await User.findByIdAndUpdate(req.params.id, updates, { new: true }).select('-cpfHash');
     if (!user) return res.status(404).json({ error: 'Usuário não encontrado' });
     res.json(user);
   } catch (err) {
@@ -115,7 +116,7 @@ app.patch('/admin/users/:id', adminAuth, async (req, res) => {
 });
 
 // Delete user
-app.delete('/admin/users/:id', adminAuth, async (req, res) => {
+app.delete('/admin/tbusuario/:id', adminAuth, async (req, res) => {
   try {
     const user = await User.findByIdAndDelete(req.params.id);
     if (!user) return res.status(404).json({ error: 'Usuário não encontrado' });
