@@ -43,9 +43,9 @@ try {
 
 $headers = @{ 'x-admin-token' = $token; 'Content-Type' = 'application/json' }
 
-Write-Host "GET /admin/users"
+Write-Host "GET /admin/tbusuario"
 try {
-    $users = Invoke-RestMethod -Uri "$base/admin/users" -Headers $headers -Method Get -ErrorAction Stop
+    $users = Invoke-RestMethod -Uri "$base/admin/tbusuario" -Headers $headers -Method Get -ErrorAction Stop
     Write-Host "Response:"; $users | ConvertTo-Json -Depth 5
 } catch {
     Write-Host "GET failed:"
@@ -53,14 +53,14 @@ try {
 }
 
 if ($CreateTestUser) {
-    $testBody = @{ username = "__test_user" + ([guid]::NewGuid().ToString().Substring(0,6)); email = "test+" + ([guid]::NewGuid().ToString().Substring(0,6)) + "@example.com"; password = "SenhaTest123" } | ConvertTo-Json
+    $testBody = @{ email = "test+" + ([guid]::NewGuid().ToString().Substring(0,6)) + "@example.com"; cpf = ((Get-Random -Maximum 99999999999) -as [string]) } | ConvertTo-Json
     Write-Host "Creating test user..."
     try {
-        $created = Invoke-RestMethod -Uri "$base/admin/users" -Headers $headers -Method Post -Body $testBody -ErrorAction Stop
+        $created = Invoke-RestMethod -Uri "$base/admin/tbusuario" -Headers $headers -Method Post -Body $testBody -ErrorAction Stop
         Write-Host "Created:"; $created | ConvertTo-Json -Depth 5
         $id = $created._id
         Write-Host "Deleting test user $id"
-        Invoke-RestMethod -Uri "$base/admin/users/$id" -Headers @{ 'x-admin-token' = $token } -Method Delete -ErrorAction Stop
+        Invoke-RestMethod -Uri "$base/admin/tbusuario/$id" -Headers @{ 'x-admin-token' = $token } -Method Delete -ErrorAction Stop
         Write-Host "Deleted test user"
     } catch {
         Write-Host "Create/Delete test user failed:"; $_ | Format-List -Force
