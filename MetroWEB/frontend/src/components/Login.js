@@ -5,26 +5,46 @@ function Login({ onLogin }) {
   const [email, setEmail] = useState('');
   const [cpf, setCpf] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
- 
-    if (email && cpf) {
-      onLogin();
-    }
-  };
-
-  const formatCPF = (value) => {
-    const numbers = value.replace(/\D/g, '');
-    if (numbers.length <= 3) return numbers;
-    if (numbers.length <= 6) return `${numbers.slice(0, 3)}.${numbers.slice(3)}`;
-    if (numbers.length <= 9) return `${numbers.slice(0, 3)}.${numbers.slice(3, 6)}.${numbers.slice(6)}`;
-    return `${numbers.slice(0, 3)}.${numbers.slice(3, 6)}.${numbers.slice(6, 9)}-${numbers.slice(9, 11)}`;
-  };
+  const [error, setError] = useState('');
 
   const handleCpfChange = (e) => {
-    const formattedCPF = formatCPF(e.target.value);
-    setCpf(formattedCPF);
+    const numbers = e.target.value.replace(/\D/g, '');
+    let formatted = numbers;
+    if (numbers.length > 3) formatted = `${numbers.slice(0,3)}.${numbers.slice(3)}`;
+    if (numbers.length > 6) formatted = `${numbers.slice(0,3)}.${numbers.slice(3,6)}.${numbers.slice(6)}`;
+    if (numbers.length > 9) formatted = `${numbers.slice(0,3)}.${numbers.slice(3,6)}.${numbers.slice(6,9)}-${numbers.slice(9,11)}`;
+    setCpf(formatted);
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!email || !cpf) return;
+    setError('');
+
+    try {
+      const res = await fetch('http://localhost:3000/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, cpf: cpf.replace(/\D/g, '') })
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setError(data?.error || `Erro ${res.status}`);
+        return;
+      }
+
+      const data = await res.json();
+      if (!data.ok || !data.email) {
+        setError('Resposta inválida do servidor');
+        return;
+      }
+
+      onLogin(data); // Retorna { email, isAdmin }
+    } catch (err) {
+      setError('Não foi possível conectar ao servidor');
+      console.error(err);
+    }
   };
 
   return (
@@ -47,7 +67,7 @@ function Login({ onLogin }) {
 
         <form onSubmit={handleSubmit} className="login-form">
           <h2 className="login-title">Acesso ao sistema</h2>
-          
+
           <div className="input-group">
             <label htmlFor="email" className="input-label">E-mail</label>
             <input
@@ -83,6 +103,8 @@ function Login({ onLogin }) {
               </button>
             </div>
           </div>
+
+          {error && <p className="error-message">{error}</p>}
 
           <button type="submit" className="login-button">
             Entrar

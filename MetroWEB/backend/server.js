@@ -8,6 +8,7 @@ import adminAuth from './middleware/adminAuth.js';
 import User from './models/User.js';
 import path, { dirname } from "path";
 import { fileURLToPath } from "url";
+import cors from 'cors';
 
 dotenv.config();
 
@@ -52,13 +53,122 @@ const imgSchema = new mongoose.Schema({
 
 const Image = mongoose.model("Image", imgSchema);
 
-// Conexão com MongoDB Atlas
+// Conexão MongoDB
 mongoose.connect(process.env.MONGO_URL)
-  .then(() => console.log("DB Connected"))
-  .catch(err => console.log(err));
+  .then(() => console.log("✅ MongoDB conectado!"))
+  .catch(err => console.error("❌ Erro ao conectar MongoDB:", err));
 
-app.use(bodyParser.urlencoded({ extended: false }));
+
+// CORS - configuração melhorada
+app.use(cors({
+  origin: ['http://localhost:3001', 'http://localhost:3000'],
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Admin-Token']
+}));
+
+// Middleware para log de requisições CORS
+app.use((req, res, next) => {
+  console.log(`${new Date().toISOString()} ${req.method} ${req.url}`);
+  console.log('Origin:', req.headers.origin);
+  next();
+});
+
 app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({ extended: true }));
+
+// Health endpoint DEVE vir antes de tudo
+app.get('/health', (req, res) => {
+  console.log('✅ Health check OK');
+  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
+//LOGIN
+app.post("/login", async (req, res) => {
+  try {
+    const { email, cpf, adminLogin } = req.body;
+
+    if (!email || !cpf) {
+      return res.status(400).json({ error: "Email e CPF obrigatórios" });
+    }
+
+    // Busca usuário no banco
+    let user = await User.findOne({ email });
+
+    if (!user) {
+      console.log('Usuário não encontrado no banco');
+
+      if (adminLogin) {
+        // Admin pode criar novo usuário automaticamente
+        console.log('Criando novo usuário admin...');
+        const cpfHash = await bcrypt.hash(cpf, 10);
+        user = new User({
+          email,
+          cpfHash,
+          isAdmin: true,
+          active: true
+        });
+        await user.save();
+
+        console.log('Novo usuário admin criado com sucesso');
+        return res.json({
+          ok: true,
+          email: user.email,
+          isAdmin: true
+        });
+      } else {
+        console.log('Usuário comum tentando login sem cadastro');
+        return res.status(401).json({
+          error: "Usuário não cadastrado. Peça para um admin cadastrar."
+        });
+      }
+    }
+
+    // Usuário existe - verifica CPF
+    const validCpf = await bcrypt.compare(cpf, user.cpfHash);
+    console.log('CPF válido?', validCpf);
+
+    if (!validCpf) {
+      return res.status(401).json({ error: "CPF incorreto" });
+    }
+
+    // Verifica se está ativo
+    if (!user.active) {
+      return res.status(401).json({ error: "Usuário inativo. Contate o administrador." });
+    }
+
+    // Validação de permissão
+    if (adminLogin && !user.isAdmin) {
+      // Usuário comum tentando entrar como admin
+      return res.status(403).json({
+        error: "Você não tem permissão de administrador."
+      });
+    }
+
+    if (!adminLogin && user.isAdmin) {
+      // Admin tentando entrar como usuário comum
+      return res.status(403).json({
+        error: "Admins devem entrar como administradores."
+      });
+    }
+
+    // Define nível de acesso
+    const accessLevel = (adminLogin && user.isAdmin); // true = admin, false = usuário comum
+
+    console.log('Login bem-sucedido!');
+    console.log('Nível de acesso:', accessLevel ? 'ADMIN' : 'USUÁRIO COMUM');
+
+    return res.json({
+      ok: true,
+      email: user.email,
+      isAdmin: accessLevel
+    });
+
+  } catch (err) {
+    console.error("Erro no /login:", err);
+    return res.status(500).json({ error: "Erro no login" });
+  }
+});
 
 // Admin routes: manage users (protected by ADMIN_TOKEN)
 console.log('Registering admin routes...');
