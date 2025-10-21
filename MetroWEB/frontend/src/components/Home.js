@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import './Home.css';
 
+
 function Home({ onLogout }) {
   const [folders, setFolders] = useState([
     { 
@@ -57,8 +58,9 @@ function Home({ onLogout }) {
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showNewProjectModal, setShowNewProjectModal] = useState(false);
   const [newProjectName, setNewProjectName] = useState('');
+  const [currentView, setCurrentView] = useState('home'); 
 
-  // Filtrar pastas aseado na busca
+
   const filteredFolders = folders.filter(folder =>
     folder.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
