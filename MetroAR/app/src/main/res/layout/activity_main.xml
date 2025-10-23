@@ -14,58 +14,85 @@
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintBottom_toTopOf="@+id/text_input_layout"
-        app:layout_constraintDimensionRatio="1:1" />
+        app:layout_constraintBottom_toTopOf="@+id/obra_input_layout"
+        app:layout_constraintVertical_chainStyle="packed"
+        app:layout_constraintDimensionRatio="4:3" /> <!-- Ajuste a proporção se necessário -->
 
+
+    <!-- CAMPO OBRA -->
     <com.google.android.material.textfield.TextInputLayout
-        android:id="@+id/text_input_layout"
-        android:layout_width="200dp"
+        android:id="@+id/obra_input_layout"
+        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+        android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:layout_marginStart="16dp"
-        android:layout_marginEnd="16dp"
-        app:layout_constraintTop_toBottomOf="@id/camera_preview"
-        app:layout_constraintStart_toStartOf="parent"
+        android:layout_marginHorizontal="16dp"
+        android:layout_marginTop="8dp"
+        android:hint="Nome da Obra"
+        app:layout_constraintBottom_toTopOf="@+id/ponto_de_vista_input_layout"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintBottom_toTopOf="@+id/guideline_top_of_text"
-        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/camera_preview">
 
         <com.google.android.material.textfield.TextInputEditText
-            android:id="@+id/user_input_edit_text"
+            android:id="@+id/obra_edit_text"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:hint="ID"
-            android:inputType="text"
-            android:textAlignment="center" />
+            android:inputType="textCapWords" />
     </com.google.android.material.textfield.TextInputLayout>
 
-    <androidx.constraintlayout.widget.Guideline
-        android:id="@+id/guideline_top_of_text"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        app:layout_constraintGuide_percent="0.8" /> <!-- Adjust as needed -->
 
-    <TextView
-        android:id="@+id/myTextView"
-        android:layout_width="wrap_content"
+    <!-- CAMPO PONTO DE VISTA -->
+    <com.google.android.material.textfield.TextInputLayout
+        android:id="@+id/ponto_de_vista_input_layout"
+        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+        android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:text="MetroAR Camera"
-        app:layout_constraintTop_toBottomOf="@id/guideline_top_of_text"
-        app:layout_constraintStart_toStartOf="parent"
+        android:layout_marginHorizontal="16dp"
+        android:layout_marginTop="4dp"
+        android:hint="Ponto de Vista"
+        app:layout_constraintBottom_toTopOf="@+id/descricao_input_layout"
         app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/obra_input_layout">
+
+        <com.google.android.material.textfield.TextInputEditText
+            android:id="@+id/ponto_de_vista_edit_text"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:inputType="text" />
+    </com.google.android.material.textfield.TextInputLayout>
+
+
+    <!-- CAMPO DESCRIÇÃO -->
+    <com.google.android.material.textfield.TextInputLayout
+        android:id="@+id/descricao_input_layout"
+        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginHorizontal="16dp"
+        android:layout_marginTop="4dp"
+        android:hint="Descrição"
         app:layout_constraintBottom_toTopOf="@+id/capture_button"
-        app:layout_constraintVertical_bias="0.3" /> <!-- Adjust vertical positioning -->
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/ponto_de_vista_input_layout">
+
+        <com.google.android.material.textfield.TextInputEditText
+            android:id="@+id/descricao_edit_text"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:inputType="textMultiLine" />
+    </com.google.android.material.textfield.TextInputLayout>
 
     <Button
         android:id="@+id/capture_button"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:layout_marginBottom="16dp"
         android:text="Tirar foto"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/myTextView"
-        app:layout_constraintVertical_bias="0.2"
-        tools:ignore="HardcodedText" /> <!-- Adjust spacing -->
+        tools:ignore="HardcodedText" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

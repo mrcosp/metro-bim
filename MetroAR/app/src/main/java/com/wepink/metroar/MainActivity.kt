@@ -34,9 +34,6 @@ import com.mongodb.client.MongoClient
 import com.mongodb.client.MongoClients
 import org.bson.Document
 import org.json.JSONObject
-import java.io.File
-import java.io.FileWriter
-import java.io.IOException
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale

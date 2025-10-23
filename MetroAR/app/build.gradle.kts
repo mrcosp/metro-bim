@@ -5,7 +5,7 @@ plugins {
 
 android {
     namespace = "com.wepink.metroar"
-    compileSdk = 36
+    compileSdk = 36 // Mantenha 36 ou a mais recente que você tiver
 
     defaultConfig {
         applicationId = "com.wepink.metroar"
@@ -26,16 +26,24 @@ android {
             )
         }
     }
+
+    // --- MUDANÇAS AQUI ---
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_11
-        targetCompatibility = JavaVersion.VERSION_11
+        // 1. Habilite o Core Library Desugaring
+        isCoreLibraryDesugaringEnabled = true
+
+        // 2. Mude a versão do Java para 17
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
     }
     kotlinOptions {
-        jvmTarget = "11"
+        // 3. Mude a versão do JVM Target para 17
+        jvmTarget = "17"
     }
 }
 
 dependencies {
+    // ... suas dependências existentes ...
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)
     implementation(libs.material)
@@ -48,7 +56,11 @@ dependencies {
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
-    implementation("com.google.android.material:material:1.12.0") // Or your current version
-    implementation("com.google.android.gms:play-services-location:21.3.0") // For FusedLocationProviderClient
+    implementation("com.google.android.material:material:1.12.0")
+    implementation("com.google.android.gms:play-services-location:21.3.0")
+    implementation("org.mongodb:mongodb-driver-sync:5.1.2")
 
+    // --- ADIÇÃO AQUI ---
+    // 4. Adicione a biblioteca de desugaring
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.0.4")
 }
