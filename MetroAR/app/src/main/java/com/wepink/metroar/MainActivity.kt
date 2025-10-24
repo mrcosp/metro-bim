@@ -44,7 +44,6 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
 
     // UI and Camera variables
     private lateinit var cameraPreviewView: PreviewView
-    private lateinit var myTextView: TextView
     private lateinit var captureButton: Button
     private lateinit var cameraExecutor: ExecutorService
     private lateinit var cameraProviderFuture: ListenableFuture<ProcessCameraProvider>
@@ -73,7 +72,6 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
         setContentView(R.layout.activity_main)
 
         cameraPreviewView = findViewById(R.id.camera_preview)
-        myTextView = findViewById(R.id.myTextView)
         captureButton = findViewById(R.id.capture_button)
 
         obraEditText = findViewById(R.id.obra_edit_text)

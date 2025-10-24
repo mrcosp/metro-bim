@@ -27,6 +27,12 @@ android {
         }
     }
 
+    packaging {
+        resources {
+            excludes += "META-INF/native-image/org.mongodb/bson/native-image.properties"
+        }
+    }
+
     // --- MUDANÇAS AQUI ---
     compileOptions {
         // 1. Habilite o Core Library Desugaring
@@ -64,3 +70,5 @@ dependencies {
     // 4. Adicione a biblioteca de desugaring
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.0.4")
 }
+
+
