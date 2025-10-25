@@ -4,6 +4,7 @@ import android.Manifest
 import android.content.ContentValues
 import android.content.Context
 import android.content.pm.PackageManager
+import android.database.Cursor
 import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
@@ -14,7 +15,6 @@ import android.os.Looper
 import android.provider.MediaStore
 import android.util.Log
 import android.widget.Button
-import android.widget.TextView
 import android.widget.Toast
 import androidx.annotation.RequiresPermission
 import androidx.appcompat.app.AppCompatActivity
@@ -29,18 +29,70 @@ import androidx.core.content.ContextCompat
 import com.google.android.gms.location.*
 import com.google.android.material.textfield.TextInputEditText
 import com.google.common.util.concurrent.ListenableFuture
-import com.mongodb.MongoException
-import com.mongodb.client.MongoClient
-import com.mongodb.client.MongoClients
-import org.bson.Document
-import org.json.JSONObject
+
+// --- IMPORTS DE REDE E COROUTINES (Resolvendo os erros de referência) ---
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import retrofit2.Response
+import retrofit2.Retrofit
+import retrofit2.converter.gson.GsonConverterFactory
+import retrofit2.http.Body
+import retrofit2.http.POST
+// --- FIM IMPORTS DE REDE ---
+
+import java.io.File
+import java.io.FileInputStream
+import java.io.IOException
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 
+// -------------------------------------------------------------------
+// 1. MODELOS DE DADOS PARA RETROFIT
+// -------------------------------------------------------------------
+
+data class GpsData(
+    val latitude: Double?,
+    val longitude: Double?,
+    val altitude_metros: Double? = null,
+    val precisao_metros: Float? = null,
+    val status: String? = null
+)
+
+data class OrientationData(
+    val azimute_graus: Double,
+    val pitch_graus: Double,
+    val roll_graus: Double
+)
+
+data class CaptureRequest(
+    val nomeObra: String,
+    val pontoDeVista: String,
+    val descricao: String,
+    val criado_em: String,
+    val gps: GpsData,
+    val orientacao: OrientationData,
+    val imageBase64: String // O campo que o servidor Mongoose espera
+)
+
+data class ApiResponse(
+    val success: Boolean,
+    val message: String
+)
+
+interface ApiService {
+    @POST("/api/captures/upload")
+    suspend fun uploadCapture(@Body request: CaptureRequest): Response<ApiResponse>
+}
+
+
 class MainActivity : AppCompatActivity(), SensorEventListener {
+
+    // VARIÁVEL DE SERVIÇO RETROFIT
+    private lateinit var apiService: ApiService
 
     // UI and Camera variables
     private lateinit var cameraPreviewView: PreviewView
@@ -49,7 +101,7 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
     private lateinit var cameraProviderFuture: ListenableFuture<ProcessCameraProvider>
     private var imageCapture: ImageCapture? = null
 
-    // Campos de texto para a estrutura de dados
+    // CAMPOS DE TEXTO
     private lateinit var obraEditText: TextInputEditText
     private lateinit var pontoDeVistaEditText: TextInputEditText
     private lateinit var descricaoEditText: TextInputEditText
@@ -79,6 +131,15 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
         descricaoEditText = findViewById(R.id.descricao_edit_text)
 
         cameraExecutor = Executors.newSingleThreadExecutor()
+
+        // --- INICIALIZAÇÃO RETROFIT ---
+        val retrofit = Retrofit.Builder()
+            .baseUrl(BASE_URL)
+            .addConverterFactory(GsonConverterFactory.create())
+            .build()
+
+        apiService = retrofit.create(ApiService::class.java)
+        // ----------------------------
 
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
         createLocationCallback()
@@ -158,48 +219,55 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
         // Nada
     }
 
+    private fun getFilePathFromUri(uri: android.net.Uri): String? {
+        var cursor: Cursor? = null
+        try {
+            val projection = arrayOf(MediaStore.Images.Media.DATA)
+            cursor = contentResolver.query(uri, projection, null, null, null)
+            if (cursor != null && cursor.moveToFirst()) {
+                val columnIndex = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.DATA)
+                return cursor.getString(columnIndex)
+            }
+        } finally {
+            cursor?.close()
+        }
+        return null
+    }
+
     /**
-     * ATENÇÃO: ESTA FUNÇÃO É INSEGURA E SÓ DEVE SER USADA PARA TESTES LOCAIS.
-     * Ela expõe as credenciais do banco de dados no lado do cliente (no app).
+     * FUNÇÃO RETROFIT: Envia o documento JSON para o SERVIDOR MONGOOSE via API REST.
      */
-    private fun uploadDataToMongoDb(mongoDocument: JSONObject) {
-        // NUNCA coloque a string de conexão diretamente em um app de produção.
-        val connectionString = "mongodb+srv://metrobim25_db:imtmetrobd@cluster0.tuvnsoi.mongodb.net/metrodb?retryWrites=true&w=majority"
-
-        // Usaremos o cameraExecutor para rodar a operação de rede em background
-        cameraExecutor.execute {
-            var mongoClient: MongoClient? = null
+    private fun uploadDataToMongoDb(captureRequest: CaptureRequest) {
+        // Usa Coroutines para gerenciar a chamada de rede assíncrona
+        CoroutineScope(Dispatchers.IO).launch {
             try {
-                Log.d(TAG, "Tentando conectar ao MongoDB...")
-                mongoClient = MongoClients.create(connectionString)
+                val response = apiService.uploadCapture(captureRequest)
 
-                // Seleciona o seu banco de dados ('metrodb')
-                val database = mongoClient.getDatabase("metrodb")
-
-                val collection = database.getCollection("metadata")
-
-                // Converte o JSONObject do Android para um Documento BSON do MongoDB
-                val doc = Document.parse(mongoDocument.toString())
-
-                // Insere o documento na coleção
-                collection.insertOne(doc)
-
-                Log.d(TAG, "Documento inserido com sucesso no MongoDB!")
-
-                // Para mostrar um Toast, precisamos voltar para a Main Thread
                 runOnUiThread {
-                    Toast.makeText(baseContext, "Salvo diretamente no MongoDB!", Toast.LENGTH_LONG).show()
+                    if (response.isSuccessful) {
+                        val apiResponse = response.body()
+                        if (apiResponse?.success == true) {
+                            Toast.makeText(baseContext, "Dados e Imagem Base64 salvos no Mongo!", Toast.LENGTH_LONG).show()
+                            obraEditText.text?.clear()
+                            pontoDeVistaEditText.text?.clear()
+                            descricaoEditText.text?.clear()
+                        } else {
+                            // Erro de lógica do servidor (ex: validação falhou)
+                            Toast.makeText(baseContext, "Erro no Servidor: ${apiResponse?.message}", Toast.LENGTH_LONG).show()
+                        }
+                    } else {
+                        // Erro HTTP (ex: 404, 500)
+                        val errorBody = response.errorBody()?.string() ?: "Erro desconhecido"
+                        Toast.makeText(baseContext, "Erro HTTP: ${response.code()} - ${response.message()}", Toast.LENGTH_LONG).show()
+                        Log.e(TAG, "Erro HTTP: ${response.code()} - $errorBody")
+                    }
                 }
-
-            } catch (e: MongoException) {
-                Log.e(TAG, "Erro ao conectar ou inserir no MongoDB", e)
+            } catch (e: Exception) {
+                // Erro de rede (servidor desligado, IP errado)
+                Log.e(TAG, "Erro de Conexão Retrofit/Rede", e)
                 runOnUiThread {
-                    Toast.makeText(baseContext, "Erro ao salvar no MongoDB.", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(baseContext, "Erro de rede: Servidor Mongoose não encontrado.", Toast.LENGTH_LONG).show()
                 }
-            } finally {
-                // É crucial fechar a conexão
-                mongoClient?.close()
-                Log.d(TAG, "Conexão com MongoDB fechada.")
             }
         }
     }
@@ -219,17 +287,13 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
         val safeNomeObra = nomeObra.replace(Regex("[^a-zA-Z0-9_.-]"), "_")
         val currentTimeMillis = System.currentTimeMillis()
         val currentDate = Date(currentTimeMillis)
-
         val fileTimestampFormat = SimpleDateFormat("yyyyMMdd_HHmmssSSS", Locale.US)
         val baseFileName = "${safeNomeObra}_${fileTimestampFormat.format(currentDate)}"
-        val imageFileNameWithExtension = "$baseFileName.jpg"
-
-        val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.US)
-        val dataSimples = dateFormat.format(currentDate)
-
         val isoTimestampFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZ", Locale.US)
         val timestampCompleto = isoTimestampFormat.format(currentDate)
 
+
+        // --- 1. Captura da Imagem (Salvando localmente) ---
         val contentValues = ContentValues().apply {
             put(MediaStore.MediaColumns.DISPLAY_NAME, baseFileName)
             put(MediaStore.MediaColumns.MIME_TYPE, "image/jpeg")
@@ -250,37 +314,57 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
                 }
 
                 override fun onImageSaved(output: ImageCapture.OutputFileResults) {
-                    val mongoDocument = JSONObject()
-                    try {
-                        mongoDocument.put("obra", nomeObra)
-                        mongoDocument.put("data", dataSimples)
-                        mongoDocument.put("ponto_de_vista", pontoDeVista)
-                        mongoDocument.put("descricao", descricao)
-                        mongoDocument.put("arquivo_imagem", imageFileNameWithExtension)
-                        mongoDocument.put("criado_em", timestampCompleto)
+                    val imageUri = output.savedUri ?: return
 
-                        currentLocation?.let { loc ->
-                            val gpsData = JSONObject()
-                            gpsData.put("latitude", loc.latitude)
-                            gpsData.put("longitude", loc.longitude)
-                            if (loc.hasAltitude()) gpsData.put("altitude_metros", loc.altitude)
-                            if (loc.hasAccuracy()) gpsData.put("precisao_metros", loc.accuracy)
-                            mongoDocument.put("gps", gpsData)
-                        } ?: mongoDocument.put("gps", "Não disponível")
-
-                        val orientationData = JSONObject()
-                        orientationData.put("azimute_graus", Math.toDegrees(orientationAngles[0].toDouble()))
-                        orientationData.put("pitch_graus", Math.toDegrees(orientationAngles[1].toDouble()))
-                        orientationData.put("roll_graus", Math.toDegrees(orientationAngles[2].toDouble()))
-                        mongoDocument.put("orientacao", orientationData)
-
-                    } catch (e: Exception) {
-                        Log.e(TAG, "Erro ao criar documento JSON", e)
+                    val imagePath = getFilePathFromUri(imageUri)
+                    if (imagePath == null) {
+                        runOnUiThread { Toast.makeText(baseContext, "Falha ao obter o caminho do arquivo.", Toast.LENGTH_SHORT).show() }
                         return
                     }
 
-                    // A função agora tentará a inserção direta no banco de dados
-                    uploadDataToMongoDb(mongoDocument)
+                    // --- 2. CONVERTER E ENVIAR BASE64 NA THREAD DE BACKGROUND ---
+                    cameraExecutor.execute {
+                        try {
+                            val imageFile = File(imagePath)
+                            val bytes = FileInputStream(imageFile).use { it.readBytes() }
+                            // Converte o Array de Bytes para Base64 String
+                            val base64String = android.util.Base64.encodeToString(bytes, android.util.Base64.NO_WRAP)
+
+                            // --- 3. Preparação do OBJETO DE ENVIO ---
+                            val gpsData = GpsData(
+                                latitude = currentLocation?.latitude,
+                                longitude = currentLocation?.longitude,
+                                altitude_metros = currentLocation?.altitude,
+                                precisao_metros = currentLocation?.accuracy,
+                                status = if (currentLocation != null) null else "Não disponível"
+                            )
+
+                            val orientationData = OrientationData(
+                                azimute_graus = Math.toDegrees(orientationAngles[0].toDouble()),
+                                pitch_graus = Math.toDegrees(orientationAngles[1].toDouble()),
+                                roll_graus = Math.toDegrees(orientationAngles[2].toDouble())
+                            )
+
+                            val requestBody = CaptureRequest(
+                                nomeObra = nomeObra,
+                                pontoDeVista = pontoDeVista,
+                                descricao = descricao,
+                                criado_em = timestampCompleto,
+                                gps = gpsData,
+                                orientacao = orientationData,
+                                imageBase64 = base64String // ENVIANDO A IMAGEM AQUI
+                            )
+
+                            // --- 4. Envio para o Servidor Mongoose ---
+                            uploadDataToMongoDb(requestBody)
+
+                        } catch (e: IOException) {
+                            Log.e(TAG, "Erro ao ler arquivo ou Base64", e)
+                            runOnUiThread {
+                                Toast.makeText(baseContext, "Erro: Falha no processamento da imagem.", Toast.LENGTH_LONG).show()
+                            }
+                        }
+                    }
                 }
             }
         )
@@ -331,6 +415,11 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
     companion object {
         private const val TAG = "MetroAR_MainActivity"
         private const val REQUEST_CODE_PERMISSIONS = 10
+
+        // BASE URL para o Servidor Mongoose
+        // Use o IP local
+        private const val BASE_URL = "http://192.168.15.22:3000/"
+
         private val REQUIRED_PERMISSIONS =
             mutableListOf(
                 Manifest.permission.CAMERA,
