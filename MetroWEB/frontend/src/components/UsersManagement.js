@@ -42,7 +42,6 @@ function UsersManagement({ onBack }) {
     active: true
   });
 
-  // Abrir modal para novo usuário
   const handleNewUser = () => {
     setEditingUser(null);
     setFormData({
@@ -54,7 +53,6 @@ function UsersManagement({ onBack }) {
     setShowModal(true);
   };
 
-  // Abrir modal para editar usuário
   const handleEditUser = (user) => {
     setEditingUser(user);
     setFormData({
@@ -66,14 +64,12 @@ function UsersManagement({ onBack }) {
     setShowModal(true);
   };
 
-  // Remover usuário
   const handleDeleteUser = (userId) => {
     if (window.confirm('Tem certeza que deseja remover este usuário?')) {
       setUsers(users.filter(user => user.id !== userId));
     }
   };
 
-  // Salvar usuário (novo ou edição)
   const handleSaveUser = () => {
     if (!formData.name || !formData.role || !formData.email) {
       alert('Por favor, preencha todos os campos obrigatórios.');
@@ -81,14 +77,12 @@ function UsersManagement({ onBack }) {
     }
 
     if (editingUser) {
-      // Editar usuário existente
       setUsers(users.map(user => 
         user.id === editingUser.id 
           ? { ...user, ...formData }
           : user
       ));
     } else {
-      // Adicionar novo usuário
       const newUser = {
         id: Math.max(...users.map(u => u.id)) + 1,
         ...formData
@@ -105,7 +99,6 @@ function UsersManagement({ onBack }) {
     });
   };
 
-  // Alternar status ativo/inativo
   const toggleUserStatus = (userId) => {
     setUsers(users.map(user => 
       user.id === userId 
@@ -114,7 +107,6 @@ function UsersManagement({ onBack }) {
     ));
   };
 
-  // Manipular mudanças no formulário
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target;
     setFormData(prev => ({
@@ -125,7 +117,6 @@ function UsersManagement({ onBack }) {
 
   return (
     <div className="users-container">
-      {/* Header */}
       <header className="users-header">
         <button className="back-button" onClick={onBack}>
           ← Voltar
@@ -138,7 +129,6 @@ function UsersManagement({ onBack }) {
         </div>
       </header>
 
-      {/* Conteúdo Principal */}
       <main className="users-main">
         <div className="users-table-container">
           <table className="users-table">
@@ -198,7 +188,6 @@ function UsersManagement({ onBack }) {
         </div>
       </main>
 
-      {/* Modal de Cadastro/Edição */}
       {showModal && (
         <div className="modal-overlay">
           <div className="modal">

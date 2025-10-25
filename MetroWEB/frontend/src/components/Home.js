@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import './Home.css';
-
+import ConstructionHistory from './ConstructionHistory';
+import UsersManagement from './UsersManagement';
 
 function Home({ onLogout }) {
   const [folders, setFolders] = useState([
@@ -58,8 +59,8 @@ function Home({ onLogout }) {
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showNewProjectModal, setShowNewProjectModal] = useState(false);
   const [newProjectName, setNewProjectName] = useState('');
-  const [currentView, setCurrentView] = useState('home'); 
-
+  const [currentView, setCurrentView] = useState('home'); // 'home', 'history', 'users'
+  const [selectedProject, setSelectedProject] = useState(null);
 
   const filteredFolders = folders.filter(folder =>
     folder.name.toLowerCase().includes(searchTerm.toLowerCase())
@@ -105,6 +106,21 @@ function Home({ onLogout }) {
     return date.toLocaleDateString('pt-BR');
   };
 
+  // Se não estiver na view home, renderiza a tela correspondente
+  if (currentView === 'users') {
+    return <UsersManagement onBack={() => setCurrentView('home')} />;
+  }
+
+  if (currentView === 'history') {
+    return (
+      <ConstructionHistory 
+        projectName={selectedProject} 
+        onBack={() => setCurrentView('home')}
+      />
+    );
+  }
+
+  // View home (padrão)
   return (
     <div className="home-container">
       {/* Header */}
@@ -118,11 +134,15 @@ function Home({ onLogout }) {
 
         <nav className="header-nav">
           <a href="#relatorios" className="nav-link">Relatórios</a>
-          <a href="#canteiros" className="nav-link">Seleção de canteiros</a>
+          <a href="#canteiros" className="nav-link">Seleção de Canteiros</a>
         </nav>
 
         <div className="header-right">
-          <button className="icon-button settings-button">
+          <button 
+            className="icon-button settings-button"
+            onClick={() => setCurrentView('users')}
+            title="Gerenciar Usuários"
+          >
             ⚙️
           </button>
           <div className="user-menu">
@@ -134,7 +154,7 @@ function Home({ onLogout }) {
             </button>
             {showUserMenu && (
               <div className="user-dropdown">
-                <button className="dropdown-item">Meu perfil</button>
+                <button className="dropdown-item">Meu Perfil</button>
                 <button className="dropdown-item" onClick={onLogout}>Sair</button>
               </div>
             )}
@@ -161,14 +181,21 @@ function Home({ onLogout }) {
               onClick={() => setShowNewProjectModal(true)}
             >
               <span className="btn-icon">+</span>
-              Novo projeto
+              Novo Projeto
             </button>
           </div>
         </div>
 
         <div className="folders-grid">
           {filteredFolders.map(folder => (
-            <div key={folder.id} className="folder-item">
+            <div 
+              key={folder.id} 
+              className="folder-item"
+              onClick={() => {
+                setSelectedProject(folder.name);
+                setCurrentView('history');
+              }}
+            >
               <div className="folder-preview">
                 {folder.preview}
               </div>
@@ -183,11 +210,15 @@ function Home({ onLogout }) {
                     onKeyPress={(e) => e.key === 'Enter' && handleFolderNameEdit(folder.id, folder.name)}
                     className="folder-name-input"
                     autoFocus
+                    onClick={(e) => e.stopPropagation()} // Impede que o clique no input mude de tela
                   />
                 ) : (
                   <div 
                     className="folder-name"
-                    onDoubleClick={() => startEditing(folder.id)}
+                    onDoubleClick={(e) => {
+                      e.stopPropagation(); // Impede que o duplo clique mude de tela
+                      startEditing(folder.id);
+                    }}
                     title="Duplo clique para editar"
                   >
                     {folder.name}
@@ -201,7 +232,10 @@ function Home({ onLogout }) {
               
               <button 
                 className="folder-edit-button"
-                onClick={() => startEditing(folder.id)}
+                onClick={(e) => {
+                  e.stopPropagation(); // Impede que o clique no botão mude de tela
+                  startEditing(folder.id);
+                }}
                 title="Editar nome"
               >
                 ✏️
@@ -221,7 +255,7 @@ function Home({ onLogout }) {
         <div className="modal-overlay">
           <div className="modal">
             <div className="modal-header">
-              <h3>Criar novo projeto</h3>
+              <h3>Criar Novo Projeto</h3>
               <button 
                 className="modal-close"
                 onClick={() => setShowNewProjectModal(false)}
@@ -254,7 +288,7 @@ function Home({ onLogout }) {
                 onClick={handleCreateNewProject}
                 disabled={!newProjectName.trim()}
               >
-                Criar projeto
+                Criar Projeto
               </button>
             </div>
           </div>
