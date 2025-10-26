@@ -175,93 +175,55 @@ app.post('/api/captures/upload', async (req, res) => {
 // ROTAS EXISTENTES (UNIFICADAS)
 // -----------------------------------------------------
 
-// LOGIN (CONFLITO RESOLVIDO - USANDO A LÓGICA COMPLETA DE LOGIN/ADMIN DO SEU CÓDIGO)
+// LOGIN 
 app.post("/login", async (req, res) => {
-    try {
-        const { email, cpf, adminLogin } = req.body;
+  try {
+         const { email, cpf } = req.body;
 
         if (!email || !cpf) {
-            return res.status(400).json({ error: "Email e CPF obrigatórios" });
-        }
+             return res.status(400).json({ error: "Email e CPF são obrigatórios." });
+       }
 
         // Busca usuário no banco
-        let user = await User.findOne({ email });
+        const user = await User.findOne({ email });
 
+       // Se não existir → bloqueia
         if (!user) {
-            console.log('Usuário não encontrado no banco');
-
-            if (adminLogin) {
-                // Admin pode criar novo usuário automaticamente
-                console.log('Criando novo usuário admin...');
-                const cpfHash = await bcrypt.hash(cpf, 10);
-                user = new User({
-                    email,
-                    cpfHash,
-                    isAdmin: true,
-                    active: true
-                });
-                await user.save();
-
-                console.log('Novo usuário admin criado com sucesso');
-                return res.json({
-                    ok: true,
-                    email: user.email,
-                    isAdmin: true
-                });
-            } else {
-                console.log('Usuário comum tentando login sem cadastro');
-                return res.status(401).json({
-                    error: "Usuário não cadastrado. Peça para um admin cadastrar."
-                });
-            }
+          console.log("Tentativa de login com usuário não cadastrado:", email);
+          return res.status(401).json({
+            error: "Usuário não cadastrado. Peça para um admin cadastrar."
+          });
         }
 
-        // Usuário existe - verifica CPF
+      // Verifica CPF
         const validCpf = await bcrypt.compare(cpf, user.cpfHash);
-        console.log('CPF válido?', validCpf);
-
         if (!validCpf) {
-            return res.status(401).json({ error: "CPF incorreto" });
+            return res.status(401).json({
+            error: "Usuário inativo. Contate o administrador."
+          });
         }
 
-        // Verifica se está ativo
-        if (!user.active) {
-            return res.status(401).json({ error: "Usuário inativo. Contate o administrador." });
-        }
+      // Verifica se está ativo
+      if (!user.active) {
+          return res.status(401).json({ error: "Usuário inativo. Contate o administrador." });
+      }
 
-        // Validação de permissão
-        if (adminLogin && !user.isAdmin) {
-            // Usuário comum tentando entrar como admin
-            return res.status(403).json({
-                error: "Você não tem permissão de administrador."
-            });
-        }
+      // Decide tipo de acesso automaticamente
+        const accessLevel = user.isAdmin ? "ADMIN" : "USUÁRIO";
+        console.log(`Login bem-sucedido: ${email} (${accessLevel})`);
 
-        // Validação de tipo de entrada
-        if (!adminLogin && user.isAdmin) {
-            // Admin tentando entrar como usuário comum
-            return res.status(403).json({
-                error: "Admins devem entrar como administradores."
-            });
-        }
-
-        // Define nível de acesso
-        const accessLevel = (adminLogin && user.isAdmin); // true = admin, false = usuário comum
-
-        console.log('Login bem-sucedido!');
-        console.log('Nível de acesso:', accessLevel ? 'ADMIN' : 'USUÁRIO COMUM');
-
+      // Retorna dados básicos
         return res.json({
-            ok: true,
-            email: user.email,
-            isAdmin: accessLevel
-        });
+          ok: true,
+          email: user.email,
+          isAdmin: user.isAdmin
+            });
 
-    } catch (err) {
-        console.error("Erro no /login:", err);
-        return res.status(500).json({ error: "Erro no login" });
-    }
-});
+          } catch (err) {
+            console.error("Erro no /login:", err);
+            return res.status(500).json({ error: "Erro no servidor durante o login." });
+      }
+  });
 
 
 // Admin routes: manage users (protected by ADMIN_TOKEN)
