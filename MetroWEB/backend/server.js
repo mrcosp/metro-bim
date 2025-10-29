@@ -144,7 +144,7 @@ app.post('/api/captures/upload', async (req, res) => {
       
       const newCapture = new Image({
         name: nomeObra,
-        folder: 'android-upload',
+        folder: req.body.folder,
         criado_em: new Date(criado_em || Date.now()),
         nome_da_obra: nomeObra,
         ponto_de_vista: pontoDeVista,

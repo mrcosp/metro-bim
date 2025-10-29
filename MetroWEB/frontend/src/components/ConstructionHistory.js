@@ -11,7 +11,7 @@ function ConstructionHistory({ projectName, onBack }) {
   useEffect(() => {
     const fetchImages = async () => {
       try {
-        const res = await fetch(`http://localhost:3000/folder/${projectName}`);
+        const res = await fetch(`/folder/${projectName}`);
         const data = await res.json();
 
         if (data.length > 0) {
@@ -23,7 +23,6 @@ function ConstructionHistory({ projectName, onBack }) {
             progress: Math.min(100, 10 + i * 20)
           })));
 
-          // sumário (exemplo: pega as datas e calcula progresso)
           setSummary({
             totalArea: '15.000 m²',
             startDate: data[0].criado_em,
@@ -40,6 +39,10 @@ function ConstructionHistory({ projectName, onBack }) {
     fetchImages();
   }, [projectName]);
 
+  // Determina se são poucas ou muitas imagens
+  const hasFewImages = images.length <= 4;
+  const timelineClass = `timeline-scroll ${hasFewImages ? 'few-images' : 'many-images'}`;
+
   const handleNext = () =>
     setCurrentImageIndex(prev =>
       prev === images.length - 1 ? 0 : prev + 1
@@ -49,6 +52,65 @@ function ConstructionHistory({ projectName, onBack }) {
     setCurrentImageIndex(prev =>
       prev === 0 ? images.length - 1 : prev - 1
     );
+
+  const handleFileSelect = (event) => {
+    const file = event.target.files[0];
+    if (file) {
+      setSelectedFile(file);
+    }
+  };
+  
+  const handleUpload = async () => {
+    if (!selectedFile) return;
+  
+    const toBase64 = (file) => new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = (error) => reject(error);
+    });
+  
+    const imageBase64 = await toBase64(selectedFile);
+  
+    const payload = {
+      nomeObra: projectName,
+      folder: projectName, // envia para a pasta atual
+      pontoDeVista: 'Frontal',
+      descricao: selectedFile.name,
+      gps: { latitude: 0, longitude: 0 },
+      orientacao: { azimute_graus: 0, pitch_graus: 0, roll_graus: 0 },
+      imageBase64
+    };
+  
+    try {
+      const res = await fetch('/api/captures/upload', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert('Imagem enviada com sucesso!');
+        setSelectedFile(null);
+  
+        // Atualiza lista de imagens
+        const updated = await fetch(`/folder/${projectName}`);
+        const imagesData = await updated.json();
+        setImages(imagesData.map((img, i) => ({
+          id: img.id,
+          url: img.base64,
+          date: img.criado_em,
+          description: img.descricao || 'Sem descrição',
+          progress: Math.min(100, 10 + i * 20)
+        })));
+      } else {
+        alert('Erro: ' + data.message);
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Erro ao enviar a imagem.');
+    }
+  };
 
   const formatDate = (dateString) =>
     new Date(dateString).toLocaleDateString('pt-BR');
@@ -119,7 +181,7 @@ function ConstructionHistory({ projectName, onBack }) {
 
           <div className="timeline-section">
             <h3>Linha do tempo da obra</h3>
-            <div className="timeline-scroll">
+            <div className={timelineClass}>
               {images.map((image, index) => (
                 <div
                   key={image.id}
@@ -161,6 +223,34 @@ function ConstructionHistory({ projectName, onBack }) {
                   {summary.status}
                 </span>
               </div>
+            </div>
+
+            <div className="upload-section">
+              <h3>Adicionar nova imagem</h3>
+              <div className="upload-area">
+                <input
+                  id="file-input"
+                  type="file"
+                  accept="image/*"
+                  onChange={handleFileSelect}
+                  className="file-input"
+                />
+                <label htmlFor="file-input" className="upload-button">
+                  📷 Selecionar imagem
+                </label>
+
+                {selectedFile && (
+                  <div className="selected-file">
+                    <span>{selectedFile.name}</span>
+                    <button onClick={handleUpload} className="confirm-upload">
+                      📤 Enviar
+                    </button>
+                  </div>
+                )}
+              </div>
+              <p className="upload-hint">
+                Formatos: JPG, PNG (Máx: 10MB)
+              </p>
             </div>
           </div>
         )}
