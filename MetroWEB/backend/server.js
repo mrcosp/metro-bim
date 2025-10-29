@@ -29,7 +29,7 @@ app.use((req, res, next) => {
 
 // Health endpoint for quick readiness checks (Garantindo que esta rota seja executada)
 app.get('/health', (req, res) => {
-    console.log('✅ Health check OK');
+    console.log('Health check OK');
     res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
@@ -82,8 +82,8 @@ const Image = mongoose.model("Image", imgSchema);
 
 // Conexão MongoDB
 mongoose.connect(process.env.MONGO_URL)
-    .then(() => console.log("✅ MongoDB conectado!"))
-    .catch(err => console.error("❌ Erro ao conectar MongoDB:", err));
+    .then(() => console.log("MongoDB conectado!"))
+    .catch(err => console.error("Erro ao conectar MongoDB:", err));
 
 
 // CORS - configuração melhorada
@@ -112,64 +112,71 @@ app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 // -----------------------------------------------------
 app.post('/api/captures/upload', async (req, res) => {
     try {
-        const {
-            nomeObra, pontoDeVista, descricao, criado_em,
-            gps, orientacao, imageBase64 
-        } = req.body;
-
-        if (!imageBase64 || !nomeObra) {
-            return res.status(400).json({ success: false, message: "Campos obrigatórios (nomeObra, imageBase64) ausentes." });
-        }
-
-        // 1. Converte Base64 para Buffer binário (formato que o Mongoose espera)
-        const base64Data = imageBase64.replace(/^data:image\/\w+;base64,/, "");
-        const imageBuffer = Buffer.from(base64Data, 'base64');
-        
-        // 2. Cria o novo documento com todos os campos (Mapeamento do Android para o Schema Mongoose)
-        const newCapture = new Image({
-            // Campos Principais
-            name: nomeObra,
-            folder: 'android-upload', // Define uma pasta padrão para uploads do app
-            criado_em: new Date(criado_em), // Converte a string ISO de volta para Date
-            
-            // Metadados do App
-            nome_da_obra: nomeObra,
-            ponto_de_vista: pontoDeVista,
-            descricao: descricao,
-            
-            // Dados Binários
-            img: {
-                data: imageBuffer,
-                contentType: 'image/jpeg' 
-            },
-            
-            // Dados de Contexto (verificando se o GPS foi fornecido)
-            gps: {
-                latitude: gps?.latitude,
-                longitude: gps?.longitude,
-                altitude_metros: gps?.altitude_metros,
-                precisao_metros: gps?.precisao_metros,
-                status: gps?.status
-            },
-            orientacao: {
-                azimute_graus: orientacao?.azimute_graus,
-                pitch_graus: orientacao?.pitch_graus,
-                roll_graus: orientacao?.roll_graus
-            }
+      const {
+        nomeObra, pontoDeVista, descricao, criado_em,
+        gps, orientacao, imageBase64 
+      } = req.body;
+  
+      if (!nomeObra) {
+        return res.status(400).json({ success: false, message: "Campo 'nomeObra' é obrigatório." });
+      }
+  
+      // Se NÃO veio imagem, cria só a pasta no banco
+      if (!imageBase64) {
+        const newFolder = new Image({
+          name: nomeObra,
+          folder: nomeObra, // usa o próprio nome como pasta
+          criado_em: new Date(),
+          nome_da_obra: nomeObra,
+          descricao: descricao || 'Projeto criado via web',
+          gps: gps || {},
+          orientacao: orientacao || {},
         });
-
-        // 3. Salva no MongoDB
-        await newCapture.save();
-        
-        console.log(`✅ Novo upload do Android via API: ${nomeObra} (${newCapture._id})`);
-
-        return res.json({ success: true, message: "Captura salva com sucesso no MongoDB!" });
-
+  
+        await newFolder.save();
+        console.log(`📁 Nova pasta criada: ${nomeObra}`);
+        return res.json({ success: true, message: "Pasta criada sem imagem." });
+      }
+  
+      // Se veio imagem, segue o fluxo normal de upload
+      const base64Data = imageBase64.replace(/^data:image\/\w+;base64,/, "");
+      const imageBuffer = Buffer.from(base64Data, 'base64');
+      
+      const newCapture = new Image({
+        name: nomeObra,
+        folder: 'android-upload',
+        criado_em: new Date(criado_em || Date.now()),
+        nome_da_obra: nomeObra,
+        ponto_de_vista: pontoDeVista,
+        descricao,
+        img: {
+          data: imageBuffer,
+          contentType: 'image/jpeg' 
+        },
+        gps: {
+          latitude: gps?.latitude,
+          longitude: gps?.longitude,
+          altitude_metros: gps?.altitude_metros,
+          precisao_metros: gps?.precisao_metros,
+          status: gps?.status
+        },
+        orientacao: {
+          azimute_graus: orientacao?.azimute_graus,
+          pitch_graus: orientacao?.pitch_graus,
+          roll_graus: orientacao?.roll_graus
+        }
+      });
+  
+      await newCapture.save();
+      console.log(`Novo upload salvo: ${nomeObra} (${newCapture._id})`);
+      return res.json({ success: true, message: "Captura salva com sucesso no MongoDB!" });
+  
     } catch (err) {
-        console.error("❌ Erro no /api/captures/upload:", err);
-        return res.status(500).json({ success: false, message: "Erro interno do servidor durante o salvamento." });
+      console.error("Erro no /api/captures/upload:", err);
+      return res.status(500).json({ success: false, message: "Erro interno do servidor durante o salvamento." });
     }
-});
+  });
+  
 
 // -----------------------------------------------------
 // ROTAS EXISTENTES (UNIFICADAS)
@@ -305,13 +312,27 @@ app.get('/', async (req, res) => {
 
 // Listar imagens de uma pasta (retorna JSON)
 app.get('/folder/:folderName', async (req, res) => {
+  try {
     const images = await Image.find({ folder: req.params.folderName });
-    res.json(images.map(img => ({
-        id: img._id,
-        name: img.name,
-        contentType: img.img.contentType
-    })));
+
+    const formatted = images.map(img => ({
+      id: img._id,
+      nome_da_obra: img.nome_da_obra,
+      descricao: img.descricao,
+      criado_em: img.createdAt,
+      contentType: img.img.contentType,
+      base64: img.img?.data
+        ? `data:${img.img.contentType};base64,${img.img.data.toString('base64')}`
+        : null
+    }));
+
+    res.json(formatted);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Erro ao buscar imagens.' });
+  }
 });
+
 
 // Get imagens
 app.get('/image/:id', async (req, res) => {
@@ -410,6 +431,31 @@ app.get("/inference/:id", async (req, res) => {
         res.status(500).send("Erro no servidor");
     }
 });
+
+//  Rota para listar pastas únicas do MongoDB
+app.get('/api/folders', async (req, res) => {
+    try {
+      const folders = await Image.distinct("folder");
+  
+      // Aqui podemos incluir mais dados, como quantidade ou última modificação
+      const foldersData = await Promise.all(folders.map(async (folderName) => {
+        const lastImage = await Image.findOne({ folder: folderName })
+          .sort({ createdAt: -1 });
+        return {
+          name: folderName,
+          date: lastImage ? lastImage.createdAt : new Date(),
+          preview: '📁',
+          type: 'folder'
+        };
+      }));
+  
+      res.json(foldersData);
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ error: 'Erro ao buscar pastas' });
+    }
+  });
+  
 
 // Servidor
 const port = process.env.PORT || 3000;

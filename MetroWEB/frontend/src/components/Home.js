@@ -1,59 +1,71 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import './Home.css';
 import ConstructionHistory from './ConstructionHistory';
 import UsersManagement from './UsersManagement';
 
 function Home({ onLogout }) {
   const [folders, setFolders] = useState([
-    { 
-      id: 1, 
-      name: 'Relatórios Mensais', 
-      date: '2024-01-15', 
-      isEditing: false,
-      type: 'folder',
-      preview: '📊'
-    },
-    { 
-      id: 2, 
-      name: 'Canteiro Obra A', 
-      date: '2024-01-14', 
-      isEditing: false,
-      type: 'folder',
-      preview: '🏗️'
-    },
-    { 
-      id: 3, 
-      name: 'Documentos Técnicos', 
-      date: '2024-01-13', 
-      isEditing: false,
-      type: 'folder',
-      preview: '📋'
-    },
-    { 
-      id: 4, 
-      name: 'Projetos em Andamento', 
-      date: '2024-01-12', 
-      isEditing: false,
-      type: 'folder',
-      preview: '🚧'
-    },
-    { 
-      id: 5, 
-      name: 'Licitações', 
-      date: '2024-01-11', 
-      isEditing: false,
-      type: 'folder',
-      preview: '📑'
-    },
-    { 
-      id: 6, 
-      name: 'Fiscalização', 
-      date: '2024-01-10', 
-      isEditing: false,
-      type: 'folder',
-      preview: '👷'
-    },
+    // { 
+    //   id: 1, 
+    //   name: 'Relatórios Mensais', 
+    //   date: '2024-01-15', 
+    //   isEditing: false,
+    //   type: 'folder',
+    //   preview: '📊'
+    // },
+    // { 
+    //   id: 2, 
+    //   name: 'Canteiro Obra A', 
+    //   date: '2024-01-14', 
+    //   isEditing: false,
+    //   type: 'folder',
+    //   preview: '🏗️'
+    // },
+    // { 
+    //   id: 3, 
+    //   name: 'Documentos Técnicos', 
+    //   date: '2024-01-13', 
+    //   isEditing: false,
+    //   type: 'folder',
+    //   preview: '📋'
+    // },
+    // { 
+    //   id: 4, 
+    //   name: 'Projetos em Andamento', 
+    //   date: '2024-01-12', 
+    //   isEditing: false,
+    //   type: 'folder',
+    //   preview: '🚧'
+    // },
+    // { 
+    //   id: 5, 
+    //   name: 'Licitações', 
+    //   date: '2024-01-11', 
+    //   isEditing: false,
+    //   type: 'folder',
+    //   preview: '📑'
+    // },
+    // { 
+    //   id: 6, 
+    //   name: 'Fiscalização', 
+    //   date: '2024-01-10', 
+    //   isEditing: false,
+    //   type: 'folder',
+    //   preview: '👷'
+    // },
   ]);
+  useEffect(() => {
+    async function fetchFolders() {
+      try {
+        const response = await fetch('http://localhost:3000/api/folders');
+        const data = await response.json();
+        setFolders(data);
+      } catch (err) {
+        console.error('Erro ao buscar pastas:', err);
+      }
+    }
+    fetchFolders();
+  }, []);
 
   const [searchTerm, setSearchTerm] = useState('');
   const [showUserMenu, setShowUserMenu] = useState(false);
@@ -84,20 +96,34 @@ function Home({ onLogout }) {
     ));
   };
 
-  const handleCreateNewProject = () => {
-    if (newProjectName.trim() !== '') {
-      const newProject = {
-        id: Date.now(),
-        name: newProjectName,
-        date: new Date().toISOString().split('T')[0],
-        isEditing: false,
-        type: 'folder',
-        preview: '📁'
-      };
-      
-      setFolders([newProject, ...folders]);
-      setNewProjectName('');
-      setShowNewProjectModal(false);
+  const handleCreateNewProject = async () => {
+    if (newProjectName.trim() === '') return;
+  
+    try {
+      const res = await fetch('http://localhost:3000/api/captures/upload', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          nomeObra: newProjectName,
+          descricao: 'Projeto criado via web',
+          gps: {},
+          orientacao: {},
+          imageBase64: '' // vazio, cria o registro da pasta
+        })
+      });
+  
+      if (res.ok) {
+        // Recarrega a lista de pastas
+        const foldersRes = await fetch('http://localhost:3000/api/folders');
+        const foldersData = await foldersRes.json();
+        setFolders(foldersData);
+        setNewProjectName('');
+        setShowNewProjectModal(false);
+      } else {
+        console.error('Erro ao criar projeto');
+      }
+    } catch (err) {
+      console.error('Erro ao criar projeto:', err);
     }
   };
 
