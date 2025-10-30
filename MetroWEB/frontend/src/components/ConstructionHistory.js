@@ -6,6 +6,7 @@ function ConstructionHistory({ projectName, onBack }) {
   const [images, setImages] = useState([]);
   const [summary, setSummary] = useState(null);
   const [selectedFile, setSelectedFile] = useState(null);
+  const [isApplyingAI, setIsApplyingAI] = useState(false);
 
   // Buscar imagens do backend
   useEffect(() => {
@@ -93,7 +94,6 @@ function ConstructionHistory({ projectName, onBack }) {
         alert('Imagem enviada com sucesso!');
         setSelectedFile(null);
   
-        // Atualiza lista de imagens
         const updated = await fetch(`/folder/${projectName}`);
         const imagesData = await updated.json();
         setImages(imagesData.map((img, i) => ({
@@ -109,6 +109,78 @@ function ConstructionHistory({ projectName, onBack }) {
     } catch (err) {
       console.error(err);
       alert('Erro ao enviar a imagem.');
+    }
+  };
+
+  const handleExportReport = async () => {
+    try {
+      // Simular geração de relatório
+      alert('Gerando relatório BIM...');
+      
+      // Aqui você implementaria a lógica real de exportação
+      const response = await fetch('/api/export/bim-report', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          projectName,
+          images: images.length,
+          summary
+        })
+      });
+      
+      if (response.ok) {
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.style.display = 'none';
+        a.href = url;
+        a.download = `relatorio-bim-${projectName}-${new Date().toISOString().split('T')[0]}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        alert('Relatório exportado com sucesso!');
+      } else {
+        alert('Erro ao exportar relatório');
+      }
+    } catch (error) {
+      console.error('Erro ao exportar relatório:', error);
+      alert('Erro ao exportar relatório');
+    }
+  };
+
+  const handleApplyAI = async () => {
+    if (!currentImage) return;
+    
+    setIsApplyingAI(true);
+    try {
+      // Simular análise de IA
+      alert('Aplicando análise de IA na imagem atual...');
+      
+      // Aqui você implementaria a chamada real para a API de IA
+      const response = await fetch('/api/ai/analyze', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          imageId: currentImage.id,
+          projectName
+        })
+      });
+      
+      if (response.ok) {
+        const analysis = await response.json();
+        alert(`Análise de IA concluída!\n\nProgresso detectado: ${analysis.detectedProgress}%\nAnomalias: ${analysis.anomalies}\nRecomendações: ${analysis.recommendations}`);
+      } else {
+        alert('Erro na análise de IA');
+      }
+    } catch (error) {
+      console.error('Erro ao aplicar IA:', error);
+      alert('Erro ao aplicar IA');
+    } finally {
+      setIsApplyingAI(false);
     }
   };
 
@@ -144,6 +216,9 @@ function ConstructionHistory({ projectName, onBack }) {
         </button>
         <h1 className="project-title">{projectName}</h1>
         <div className="header-actions">
+          <button className="export-report-btn" onClick={handleExportReport}>
+            📊 Exportar relatório BIM
+          </button>
           <span className="progress-badge">
             Progresso: {summary?.currentProgress || 0}%
           </span>
@@ -174,6 +249,13 @@ function ConstructionHistory({ projectName, onBack }) {
                     }}
                   ></div>
                   <span>{currentImage.progress}% concluído</span>
+                  <button 
+                    className="ai-analysis-btn"
+                    onClick={handleApplyAI}
+                    disabled={isApplyingAI}
+                  >
+                    {isApplyingAI ? '🔄 Aplicando IA...' : '🤖 Aplicar IA'}
+                  </button>
                 </div>
               </div>
             </div>
