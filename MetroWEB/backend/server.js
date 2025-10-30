@@ -180,71 +180,62 @@ app.post('/api/captures/upload', async (req, res) => {
 // ROTAS EXISTENTES (WEB)
 // -----------------------------------------------------
 
-// LOGIN (LÓGICA CORRIGIDA)
 app.post("/login", async (req, res) => {
     try {
-        const { email, cpf, adminLogin } = req.body; 
+        // 1. Recebe apenas email e cpf.
+        const { email, cpf } = req.body; 
 
         if (!email || !cpf) {
             return res.status(400).json({ error: "Email e CPF são obrigatórios." });
         }
 
+        // 2. Busca usuário no banco
         let user = await User.findOne({ email });
 
         if (!user) {
-            // Lógica de autocadastro do Admin
-            if (adminLogin) {
+            console.log("Tentativa de login com usuário não cadastrado:", email);
+            return res.status(401).json({
+                error: "Usuário não cadastrado. Peça para um admin cadastrar."
+            });
+            
+            // Se precisar da lógica de autocadastro de admin:
+            /*
+            if (adminLogin) { // <-- precisaria enviar 'adminLogin' do frontend
                 console.log('Criando novo usuário admin...');
                 const cpfHash = await bcrypt.hash(cpf, 10);
-                user = new User({
-                    email,
-                    cpfHash,
-                    isAdmin: true,
-                    active: true
-                });
+                user = new User({ email, cpfHash, isAdmin: true, active: true });
                 await user.save();
                 console.log('Novo usuário admin criado com sucesso');
             } else {
-                console.log("Tentativa de login com usuário não cadastrado:", email);
                 return res.status(401).json({
                     error: "Usuário não cadastrado. Peça para um admin cadastrar."
                 });
             }
+            */
         }
 
-        // Verifica CPF
+        // 3. Verifica CPF
         const validCpf = await bcrypt.compare(cpf, user.cpfHash);
         if (!validCpf) {
-            // ⚠️ CORREÇÃO AQUI: Mensagem de erro correta
             return res.status(401).json({ error: "CPF incorreto." });
         }
 
-        // Verifica se está ativo
+        // 4. Verifica se está ativo
         if (!user.active) {
             return res.status(401).json({ error: "Usuário inativo. Contate o administrador." });
         }
 
-        // Validação de permissão
-        if (adminLogin && !user.isAdmin) {
-            return res.status(403).json({
-                error: "Você não tem permissão de administrador."
-            });
-        }
-        if (!adminLogin && user.isAdmin) {
-             return res.status(403).json({
-                error: "Admins devem entrar como administradores."
-            });
-        }
+        // 5. REMOVIDO: Bloco de validação 'adminLogin' (Não precisamos mais)
 
-        // Decide tipo de acesso
+        // 6. Decide tipo de acesso
         const accessLevel = user.isAdmin ? "ADMIN" : "USUÁRIO";
         console.log(`Login bem-sucedido: ${email} (${accessLevel})`);
 
-        // Retorna dados básicos
+        // 7. Retorna dados básicos (incluindo se é admin)
         return res.json({
             ok: true,
             email: user.email,
-            isAdmin: user.isAdmin
+            isAdmin: user.isAdmin // O frontend web usará isso para redirecionar
         });
 
     } catch (err) {
