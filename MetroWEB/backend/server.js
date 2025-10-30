@@ -9,7 +9,7 @@ import User from './models/User.js';
 import path, { dirname } from "path";
 import { fileURLToPath } from "url";
 import cors from 'cors';
-import fs from "fs"; // Adicionado o import de fs
+import fs from "fs"; 
 
 dotenv.config();
 
@@ -21,34 +21,33 @@ if (!fs.existsSync(resultsDir)) fs.mkdirSync(resultsDir, { recursive: true });
 
 const app = express();
 
-// Request logging middleware (helps debugging incoming requests)
+// Middleware de log de requisições
 app.use((req, res, next) => {
     console.log(`${new Date().toISOString()} ${req.method} ${req.url}`);
     next();
 });
 
-// Health endpoint for quick readiness checks (Garantindo que esta rota seja executada)
+// Endpoint de verificação de saúde
 app.get('/health', (req, res) => {
-    console.log('Health check OK');
+    console.log('✅ Health check OK');
     res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-// Servir a pasta TesteFotos como estática
+// Servir pastas estáticas
 app.use('/results', express.static(path.join(__dirname, 'results')));
-
 app.use(express.static(__dirname));
 
+// Configuração do View Engine (EJS)
 app.set("views", __dirname);
 app.set("view engine", "ejs");
 
 // -----------------------------------------------------
-// 1. MONGODB SCHEMA ATUALIZADO
-// Inclui todos os metadados do aplicativo Android
+// 1. MONGODB SCHEMA (Atualizado para Android e Web)
 // -----------------------------------------------------
 const imgSchema = new mongoose.Schema({
     // Campos da UI Web e Android
     name: String, // Usado para Nome da Obra
-    folder: String, // Usado para a pasta (Ex: 'android-upload')
+    folder: String, // Usado para a pasta (Ex: 'android-upload' ou o nome da pasta)
     
     // NOVOS CAMPOS DE METADADOS DO ANDROID
     nome_da_obra: String,
@@ -61,7 +60,7 @@ const imgSchema = new mongoose.Schema({
         longitude: Number,
         altitude_metros: Number,
         precisao_metros: Number,
-        status: String // Para status 'Não disponível'
+        status: String 
     },
     // Dados de Orientação (AR)
     orientacao: {
@@ -70,11 +69,14 @@ const imgSchema = new mongoose.Schema({
         roll_graus: Number
     },
 
-    // Campo de Imagem Binária
+    // Campo de Imagem Binária (Onde a foto é salva)
     img: {
-        data: Buffer, // Armazena o binário (Base64 decodificado)
+        data: Buffer, 
         contentType: String
     },
+    // Campo 'criado_em' do Android (tipo Date)
+    criado_em: Date,
+    // Campo 'createdAt' padrão (tipo Date, gerenciado pelo Mongoose/DB)
     createdAt: { type: Date, default: Date.now }
 });
 
@@ -82,163 +84,180 @@ const Image = mongoose.model("Image", imgSchema);
 
 // Conexão MongoDB
 mongoose.connect(process.env.MONGO_URL)
-    .then(() => console.log("MongoDB conectado!"))
-    .catch(err => console.error("Erro ao conectar MongoDB:", err));
+    .then(() => console.log("✅ MongoDB conectado!"))
+    .catch(err => console.error("❌ Erro ao conectar MongoDB:", err));
 
 
-// CORS - configuração melhorada
+// Configuração do CORS (Permite requisições locais)
 app.use(cors({
-    origin: ['http://localhost:3001', 'http://localhost:3000'],
+    origin: ['http://localhost:3001', 'http://localhost:3000'], // Adicione outras origens se necessário
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Admin-Token']
 }));
 
-// Middleware para log de requisições CORS
-app.use((req, res, next) => {
-    console.log(`${new Date().toISOString()} ${req.method} ${req.url}`);
-    console.log('Origin:', req.headers.origin);
-    next();
-});
-
 // Aumentar o limite de tamanho do corpo da requisição para Base64 (Imagens)
-// Mudar para json() de body-parser
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
 // -----------------------------------------------------
-// 2. NOVO ENDPOINT DE UPLOAD DO APP ANDROID (API REST)
-// Recebe JSON (metadados + Base64) e salva no Mongo
+// 2. ENDPOINT DE UPLOAD DO APP ANDROID (API REST)
+// (Aceita 'folder' do Android)
 // -----------------------------------------------------
 app.post('/api/captures/upload', async (req, res) => {
     try {
-      const {
-        nomeObra, pontoDeVista, descricao, criado_em,
-        gps, orientacao, imageBase64 
-      } = req.body;
-  
-      if (!nomeObra) {
-        return res.status(400).json({ success: false, message: "Campo 'nomeObra' é obrigatório." });
-      }
-  
-      // Se NÃO veio imagem, cria só a pasta no banco
-      if (!imageBase64) {
-        const newFolder = new Image({
-          name: nomeObra,
-          folder: nomeObra, // usa o próprio nome como pasta
-          criado_em: new Date(),
-          nome_da_obra: nomeObra,
-          descricao: descricao || 'Projeto criado via web',
-          gps: gps || {},
-          orientacao: orientacao || {},
-        });
-  
-        await newFolder.save();
-        console.log(`📁 Nova pasta criada: ${nomeObra}`);
-        return res.json({ success: true, message: "Pasta criada sem imagem." });
-      }
-  
-      // Se veio imagem, segue o fluxo normal de upload
-      const base64Data = imageBase64.replace(/^data:image\/\w+;base64,/, "");
-      const imageBuffer = Buffer.from(base64Data, 'base64');
-      
-      const newCapture = new Image({
-        name: nomeObra,
-        folder: req.body.folder,
-        criado_em: new Date(criado_em || Date.now()),
-        nome_da_obra: nomeObra,
-        ponto_de_vista: pontoDeVista,
-        descricao,
-        img: {
-          data: imageBuffer,
-          contentType: 'image/jpeg' 
-        },
-        gps: {
-          latitude: gps?.latitude,
-          longitude: gps?.longitude,
-          altitude_metros: gps?.altitude_metros,
-          precisao_metros: gps?.precisao_metros,
-          status: gps?.status
-        },
-        orientacao: {
-          azimute_graus: orientacao?.azimute_graus,
-          pitch_graus: orientacao?.pitch_graus,
-          roll_graus: orientacao?.roll_graus
+        const {
+            nomeObra, pontoDeVista, descricao, criado_em,
+            gps, orientacao, imageBase64,
+            folder // <-- 1. RECEBENDO O CAMPO 'folder' DO ANDROID
+        } = req.body;
+
+        if (!nomeObra) {
+            return res.status(400).json({ success: false, message: "Campo 'nomeObra' é obrigatório." });
         }
-      });
-  
-      await newCapture.save();
-      console.log(`Novo upload salvo: ${nomeObra} (${newCapture._id})`);
-      return res.json({ success: true, message: "Captura salva com sucesso no MongoDB!" });
-  
+        
+        if (!folder) {
+             return res.status(400).json({ success: false, message: "Campo 'folder' é obrigatório." });
+        }
+
+        // Lógica para upload SEM imagem (se o Android enviar)
+        if (!imageBase64) {
+            const newFolderEntry = new Image({
+                name: nomeObra,
+                folder: folder.toLowerCase().trim(), // Limpa o nome da pasta
+                criado_em: new Date(criado_em || Date.now()),
+                nome_da_obra: nomeObra,
+                descricao: descricao || 'Projeto criado (sem imagem)',
+                gps: gps || {},
+                orientacao: orientacao || {},
+            });
+
+            await newFolderEntry.save();
+            console.log(`📁 Novo registro (sem imagem) criado: ${nomeObra}`);
+            return res.json({ success: true, message: "Registro (sem imagem) criado." });
+        }
+
+        // Lógica principal (Upload com Imagem Base64)
+        
+        // 1. Converte Base64 para Buffer binário
+        const base64Data = imageBase64.replace(/^data:image\/\w+;base64,/, "");
+        const imageBuffer = Buffer.from(base64Data, 'base64');
+        
+        // 2. Cria o novo documento Mongoose
+        const newCapture = new Image({
+            name: nomeObra,
+            // 2. ⚠️ CORREÇÃO: Usa o 'folder' enviado pelo app (limpo)
+            folder: folder.toLowerCase().trim(), 
+            criado_em: new Date(criado_em || Date.now()),
+            
+            nome_da_obra: nomeObra,
+            ponto_de_vista: pontoDeVista,
+            descricao: descricao,
+            
+            img: {
+                data: imageBuffer,
+                contentType: 'image/jpeg' 
+            },
+            
+            gps: gps || {}, // Fallback para objetos vazios
+            orientacao: orientacao || {} // Fallback para objetos vazios
+        });
+
+        // 3. Salva no MongoDB
+        await newCapture.save();
+        
+        console.log(`✅ Novo upload do Android salvo: ${nomeObra} (Pasta: ${folder})`);
+        return res.json({ success: true, message: "Captura salva com sucesso no MongoDB!" });
+
     } catch (err) {
-      console.error("Erro no /api/captures/upload:", err);
-      return res.status(500).json({ success: false, message: "Erro interno do servidor durante o salvamento." });
+        console.error("❌ Erro no /api/captures/upload:", err);
+        return res.status(500).json({ success: false, message: "Erro interno do servidor durante o salvamento." });
     }
-  });
-  
+});
+ 
 
 // -----------------------------------------------------
-// ROTAS EXISTENTES (UNIFICADAS)
+// ROTAS EXISTENTES (WEB)
 // -----------------------------------------------------
 
-// LOGIN 
+// LOGIN (LÓGICA CORRIGIDA)
 app.post("/login", async (req, res) => {
-  try {
-         const { email, cpf } = req.body;
+    try {
+        const { email, cpf, adminLogin } = req.body; 
 
         if (!email || !cpf) {
-             return res.status(400).json({ error: "Email e CPF são obrigatórios." });
-       }
-
-        // Busca usuário no banco
-        const user = await User.findOne({ email });
-
-       // Se não existir → bloqueia
-        if (!user) {
-          console.log("Tentativa de login com usuário não cadastrado:", email);
-          return res.status(401).json({
-            error: "Usuário não cadastrado. Peça para um admin cadastrar."
-          });
+            return res.status(400).json({ error: "Email e CPF são obrigatórios." });
         }
 
-      // Verifica CPF
+        let user = await User.findOne({ email });
+
+        if (!user) {
+            // Lógica de autocadastro do Admin
+            if (adminLogin) {
+                console.log('Criando novo usuário admin...');
+                const cpfHash = await bcrypt.hash(cpf, 10);
+                user = new User({
+                    email,
+                    cpfHash,
+                    isAdmin: true,
+                    active: true
+                });
+                await user.save();
+                console.log('Novo usuário admin criado com sucesso');
+            } else {
+                console.log("Tentativa de login com usuário não cadastrado:", email);
+                return res.status(401).json({
+                    error: "Usuário não cadastrado. Peça para um admin cadastrar."
+                });
+            }
+        }
+
+        // Verifica CPF
         const validCpf = await bcrypt.compare(cpf, user.cpfHash);
         if (!validCpf) {
-            return res.status(401).json({
-            error: "Usuário inativo. Contate o administrador."
-          });
+            // ⚠️ CORREÇÃO AQUI: Mensagem de erro correta
+            return res.status(401).json({ error: "CPF incorreto." });
         }
 
-      // Verifica se está ativo
-      if (!user.active) {
-          return res.status(401).json({ error: "Usuário inativo. Contate o administrador." });
-      }
+        // Verifica se está ativo
+        if (!user.active) {
+            return res.status(401).json({ error: "Usuário inativo. Contate o administrador." });
+        }
 
-      // Decide tipo de acesso automaticamente
+        // Validação de permissão
+        if (adminLogin && !user.isAdmin) {
+            return res.status(403).json({
+                error: "Você não tem permissão de administrador."
+            });
+        }
+        if (!adminLogin && user.isAdmin) {
+             return res.status(403).json({
+                error: "Admins devem entrar como administradores."
+            });
+        }
+
+        // Decide tipo de acesso
         const accessLevel = user.isAdmin ? "ADMIN" : "USUÁRIO";
         console.log(`Login bem-sucedido: ${email} (${accessLevel})`);
 
-      // Retorna dados básicos
+        // Retorna dados básicos
         return res.json({
-          ok: true,
-          email: user.email,
-          isAdmin: user.isAdmin
-            });
+            ok: true,
+            email: user.email,
+            isAdmin: user.isAdmin
+        });
 
-          } catch (err) {
-            console.error("Erro no /login:", err);
-            return res.status(500).json({ error: "Erro no servidor durante o login." });
-      }
-  });
+    } catch (err) {
+        console.error("Erro no /login:", err);
+        return res.status(500).json({ error: "Erro no servidor durante o login." });
+    }
+});
 
 
-// Admin routes: manage users (protected by ADMIN_TOKEN)
+// Rotas Admin (Protegidas)
 console.log('Registering admin routes...');
-// List users
 app.get('/admin/tbusuario', adminAuth, async (req, res) => {
     try {
-        // Return all users, but do not expose cpfHash
         const users = await User.find().select('-cpfHash');
         res.json(users);
     } catch (err) {
@@ -247,7 +266,6 @@ app.get('/admin/tbusuario', adminAuth, async (req, res) => {
     }
 });
 
-// Create user (email + cpf). Only admin may create users.
 app.post('/admin/tbusuario', adminAuth, async (req, res) => {
     try {
         const { email, cpf, isAdmin, active } = req.body;
@@ -270,7 +288,6 @@ app.post('/admin/tbusuario', adminAuth, async (req, res) => {
     }
 });
 
-// Toggle active or update user (partial)
 app.patch('/admin/tbusuario/:id', adminAuth, async (req, res) => {
     try {
         const updates = {};
@@ -288,7 +305,6 @@ app.patch('/admin/tbusuario/:id', adminAuth, async (req, res) => {
     }
 });
 
-// Delete user
 app.delete('/admin/tbusuario/:id', adminAuth, async (req, res) => {
     try {
         const user = await User.findByIdAndDelete(req.params.id);
@@ -300,45 +316,46 @@ app.delete('/admin/tbusuario/:id', adminAuth, async (req, res) => {
     }
 });
 
-// Multer para upload em memória (não salva no disco)
+// Configuração do Multer (Upload de arquivos pela Web)
 const storage = multer.memoryStorage();
 const upload = multer({ storage: storage });
 
-// Página única
+// Página única (Web EJS)
 app.get('/', async (req, res) => {
     const folders = await Image.distinct("folder");
     res.render('index', { folders });
 });
 
-// Listar imagens de uma pasta (retorna JSON)
+// Listar imagens de uma pasta (JSON para Web)
 app.get('/folder/:folderName', async (req, res) => {
-  try {
-    const images = await Image.find({ folder: req.params.folderName });
+    try {
+        const images = await Image.find({ folder: req.params.folderName });
 
-    const formatted = images.map(img => ({
-      id: img._id,
-      nome_da_obra: img.nome_da_obra,
-      descricao: img.descricao,
-      criado_em: img.createdAt,
-      contentType: img.img.contentType,
-      base64: img.img?.data
-        ? `data:${img.img.contentType};base64,${img.img.data.toString('base64')}`
-        : null
-    }));
+        // Corrigido: envia Base64 para a web
+        const formatted = images.map(img => ({
+            id: img._id,
+            nome_da_obra: img.nome_da_obra,
+            descricao: img.descricao,
+            criado_em: img.createdAt,
+            contentType: img.img?.contentType, 
+            base64: img.img?.data
+                ? `data:${img.img.contentType};base64,${img.img.data.toString('base64')}`
+                : null
+        }));
 
-    res.json(formatted);
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Erro ao buscar imagens.' });
-  }
+        res.json(formatted);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Erro ao buscar imagens.' });
+    }
 });
 
 
-// Get imagens
+// Get imagens (renderização direta da imagem binária)
 app.get('/image/:id', async (req, res) => {
     try {
         const image = await Image.findById(req.params.id);
-        if(!image) return res.sendStatus(404);
+        if(!image || !image.img || !image.img.data) return res.sendStatus(404);
         res.contentType(image.img.contentType);
         res.send(image.img.data);
     } catch(err) {
@@ -347,7 +364,7 @@ app.get('/image/:id', async (req, res) => {
     }
 });
 
-// Upload único ou múltiplo (Rota Antiga do Web)
+// Upload único ou múltiplo (Rota Antiga do Web via Multer)
 app.post('/upload', upload.array('images', 20), async (req, res) => {
     let folder = req.body.folder; // pasta escolhida
     if (!folder) folder = req.body.newFolder; // criar nova pasta
@@ -369,7 +386,7 @@ app.post('/upload', upload.array('images', 20), async (req, res) => {
     }
 });
 
-// Deletar imagem
+// Deletar imagem (Web)
 app.delete('/delete/:id', async (req, res) => {
     try {
         await Image.findByIdAndDelete(req.params.id);
@@ -382,31 +399,30 @@ app.delete('/delete/:id', async (req, res) => {
 
 import { spawn } from "child_process";
 
+// Rota de Inferência (Python)
 app.get("/inference/:id", async (req, res) => {
     try {
         const imageId = req.params.id;
 
-        // Busca imagem no Mongo
         const image = await Image.findById(imageId);
-        if (!image) return res.status(404).send("Imagem não encontrada");
+        if (!image || !image.img || !image.img.data) {
+             return res.status(404).send("Imagem não encontrada ou sem dados binários");
+        }
 
-        // Garante que a pasta temp exista
         const tempDir = path.join(__dirname, "temp");
         if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir, { recursive: true });
 
         const tempImagePath = path.join(tempDir, `${imageId}.jpg`);
         fs.writeFileSync(tempImagePath, image.img.data);
 
-        // Garante que a pasta results exista
         const resultsDir = path.join(__dirname, "results", imageId);
         if (!fs.existsSync(resultsDir)) fs.mkdirSync(resultsDir, { recursive: true });
 
         // Rodar script Python
         const py = spawn(path.join(__dirname, "venv", "Scripts", "python.exe"), [
-            // const py = spawn(path.join(__dirname, "venv", "bin", "python3"), [ // Linux/Mac
             "inference_test.py",
             "--model_path", "weights_26.pt",
-            "--image_path", path.join(__dirname, "temp", `${imageId}.jpg`),
+            "--image_path", tempImagePath,
             "--output_dir", resultsDir,
             "--channels", "4"
         ]);
@@ -432,31 +448,33 @@ app.get("/inference/:id", async (req, res) => {
     }
 });
 
-//  Rota para listar pastas únicas do MongoDB
+// Rota para listar pastas únicas (Web e Android)
 app.get('/api/folders', async (req, res) => {
     try {
-      const folders = await Image.distinct("folder");
-  
-      // Aqui podemos incluir mais dados, como quantidade ou última modificação
-      const foldersData = await Promise.all(folders.map(async (folderName) => {
-        const lastImage = await Image.findOne({ folder: folderName })
-          .sort({ createdAt: -1 });
-        return {
-          name: folderName,
-          date: lastImage ? lastImage.createdAt : new Date(),
-          preview: '📁',
-          type: 'folder'
-        };
-      }));
-  
-      res.json(foldersData);
+        // Encontra todos os nomes de pastas únicos, filtrando nulos ou vazios
+        const folders = await Image.distinct("folder", { 
+            folder: { $exists: true, $ne: null, $ne: "" } 
+        });
+ 
+        const foldersData = await Promise.all(folders.map(async (folderName) => {
+            const lastImage = await Image.findOne({ folder: folderName })
+                .sort({ createdAt: -1 });
+            return {
+                name: folderName,
+                date: lastImage ? lastImage.createdAt : new Date(),
+                preview: '📁',
+                type: 'folder'
+            };
+        }));
+ 
+        res.json(foldersData);
     } catch (err) {
-      console.error(err);
-      res.status(500).json({ error: 'Erro ao buscar pastas' });
+        console.error(err);
+        res.status(500).json({ error: 'Erro ao buscar pastas' });
     }
-  });
-  
+});
+ 
 
 // Servidor
 const port = process.env.PORT || 3000;
-app.listen(port, () => console.log(`Server listening on port ${port}`));
+app.listen(port, () => console.log(`🚀 Servidor rodando na porta ${port}`));

@@ -1,7 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <network-security-config>
     <domain-config>
-        <!-- necessário trocar o ip e colocar o ip do localhost da máquina-->
         <domain includeSubdomains="true">192.168.15.22</domain>
         <cleartext-traffic permitted="true" />
     </domain-config>
