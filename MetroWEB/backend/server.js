@@ -225,6 +225,7 @@ app.post("/login", async (req, res) => {
         }
 
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
         // Validação de permissão
         if (adminLogin && !user.isAdmin) {
             return res.status(403).json({
@@ -242,6 +243,13 @@ app.post("/login", async (req, res) => {
         console.log(`Login bem-sucedido: ${email} (${accessLevel})`);
 
         // Retorna dados básicos
+=======
+        // 5. Decide tipo de acesso
+        const accessLevel = user.isAdmin ? "ADMIN" : "USUÁRIO";
+        console.log(`Login bem-sucedido: ${email} (${accessLevel})`);
+
+        // 6. Retorna dados básicos (incluindo se é admin)
+>>>>>>> Stashed changes
 =======
         // 5. Decide tipo de acesso
         const accessLevel = user.isAdmin ? "ADMIN" : "USUÁRIO";
