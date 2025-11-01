@@ -1,3 +1,9 @@
 <resources>
     <string name="app_name">MetroAR</string>
+
+    <!-- Textos da tela Home -->
+    <string name="welcome_title">Bem vindo!</string>
+    <string name="welcome_subtitle">Escolha uma opção para começar</string>
+    <string name="button_projects">Projetos</string>
+    <string name="button_gallery">Galeria</string>
 </resources>
