@@ -29,7 +29,7 @@ app.use((req, res, next) => {
 
 // Endpoint de verificação de saúde
 app.get('/health', (req, res) => {
-    console.log('✅ Health check OK');
+    console.log('Health check OK');
     res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
@@ -84,8 +84,8 @@ const Image = mongoose.model("Image", imgSchema);
 
 // Conexão MongoDB
 mongoose.connect(process.env.MONGO_URL)
-    .then(() => console.log("✅ MongoDB conectado!"))
-    .catch(err => console.error("❌ Erro ao conectar MongoDB:", err));
+    .then(() => console.log("MongoDB conectado!"))
+    .catch(err => console.error("Erro ao conectar MongoDB:", err));
 
 
 // Configuração do CORS (Permite requisições locais)
@@ -166,11 +166,11 @@ app.post('/api/captures/upload', async (req, res) => {
         // 3. Salva no MongoDB
         await newCapture.save();
         
-        console.log(`✅ Novo upload do Android salvo: ${nomeObra} (Pasta: ${folder})`);
+        console.log(`Novo upload do Android salvo: ${nomeObra} (Pasta: ${folder})`);
         return res.json({ success: true, message: "Captura salva com sucesso no MongoDB!" });
 
     } catch (err) {
-        console.error("❌ Erro no /api/captures/upload:", err);
+        console.error("Erro no /api/captures/upload:", err);
         return res.status(500).json({ success: false, message: "Erro interno do servidor durante o salvamento." });
     }
 });
@@ -224,6 +224,7 @@ app.post("/login", async (req, res) => {
             return res.status(401).json({ error: "Usuário inativo. Contate o administrador." });
         }
 
+<<<<<<< Updated upstream
         // Validação de permissão
         if (adminLogin && !user.isAdmin) {
             return res.status(403).json({
@@ -241,6 +242,13 @@ app.post("/login", async (req, res) => {
         console.log(`Login bem-sucedido: ${email} (${accessLevel})`);
 
         // Retorna dados básicos
+=======
+        // 5. Decide tipo de acesso
+        const accessLevel = user.isAdmin ? "ADMIN" : "USUÁRIO";
+        console.log(`Login bem-sucedido: ${email} (${accessLevel})`);
+
+        // 6. Retorna dados básicos (incluindo se é admin)
+>>>>>>> Stashed changes
         return res.json({
             ok: true,
             email: user.email,
@@ -331,7 +339,6 @@ app.get('/folder/:folderName', async (req, res) => {
     try {
         const images = await Image.find({ folder: req.params.folderName });
 
-        // Corrigido: envia Base64 para a web
         const formatted = images.map(img => ({
             id: img._id,
             nome_da_obra: img.nome_da_obra,
@@ -364,10 +371,10 @@ app.get('/image/:id', async (req, res) => {
     }
 });
 
-// Upload único ou múltiplo (Rota Antiga do Web via Multer)
+// Upload único ou múltiplo 
 app.post('/upload', upload.array('images', 20), async (req, res) => {
-    let folder = req.body.folder; // pasta escolhida
-    if (!folder) folder = req.body.newFolder; // criar nova pasta
+    let folder = req.body.folder; 
+    if (!folder) folder = req.body.newFolder; 
 
     if (!req.files || req.files.length === 0) return res.send("Nenhum arquivo enviado");
 
@@ -400,7 +407,7 @@ app.delete('/delete/:id', async (req, res) => {
 import { spawn } from "child_process";
 
 // Rota de Inferência (Python)
-app.get("/inference/:id", async (req, res) => {
+app.post("/inference/:id", async (req, res) => {
     try {
         const imageId = req.params.id;
 
@@ -419,12 +426,12 @@ app.get("/inference/:id", async (req, res) => {
         if (!fs.existsSync(resultsDir)) fs.mkdirSync(resultsDir, { recursive: true });
 
         // Rodar script Python
-        const py = spawn(path.join(__dirname, "venv", "Scripts", "python.exe"), [
-            "inference_test.py",
-            "--model_path", "weights_26.pt",
-            "--image_path", tempImagePath,
-            "--output_dir", resultsDir,
-            "--channels", "4"
+        const py = spawn("python", [
+          "inference_test.py",
+          "--model_path", "var_3plus_weights_30.pt",
+          "--image_path", tempImagePath,
+          "--output_dir", resultsDir,
+          "--channels", "4"
         ]);
 
         py.stdout.on("data", (data) => console.log(`PY: ${data}`));

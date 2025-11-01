@@ -7,7 +7,9 @@ function ConstructionHistory({ projectName, onBack }) {
   const [summary, setSummary] = useState(null);
   const [selectedFile, setSelectedFile] = useState(null);
   const [isApplyingAI, setIsApplyingAI] = useState(false);
-
+  const [showComparison, setShowComparison] = useState(false);
+  const [aiProcessedImage, setAiProcessedImage] = useState(null);
+  
   // Buscar imagens do backend
   useEffect(() => {
     const fetchImages = async () => {
@@ -75,7 +77,7 @@ function ConstructionHistory({ projectName, onBack }) {
   
     const payload = {
       nomeObra: projectName,
-      folder: projectName, // envia para a pasta atual
+      folder: projectName, 
       pontoDeVista: 'Frontal',
       descricao: selectedFile.name,
       gps: { latitude: 0, longitude: 0 },
@@ -155,11 +157,7 @@ function ConstructionHistory({ projectName, onBack }) {
     
     setIsApplyingAI(true);
     try {
-      // Simular análise de IA
-      alert('Aplicando análise de IA na imagem atual...');
-      
-      // Aqui você implementaria a chamada real para a API de IA
-      const response = await fetch('/api/ai/analyze', {
+      const response = await fetch(`/inference/${currentImage.id}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -171,8 +169,18 @@ function ConstructionHistory({ projectName, onBack }) {
       });
       
       if (response.ok) {
-        const analysis = await response.json();
-        alert(`Análise de IA concluída!\n\nProgresso detectado: ${analysis.detectedProgress}%\nAnomalias: ${analysis.anomalies}\nRecomendações: ${analysis.recommendations}`);
+        const result = await response.json();
+        
+        // Usar a imagem overlay retornada pelo servidor
+        const processedImageData = {
+          url: result.overlay, 
+          date: new Date().toISOString(),
+          description: `Análise IA: ${currentImage.description}`,
+          progress: currentImage.progress
+        };
+        
+        setAiProcessedImage(processedImageData);
+        setShowComparison(true);
       } else {
         alert('Erro na análise de IA');
       }
@@ -227,14 +235,32 @@ function ConstructionHistory({ projectName, onBack }) {
 
       <div className="history-content">
         <div className="image-section">
-          <div className="image-container">
-            <img
-              src={currentImage.url}
-              alt={`Obra ${formatDate(currentImage.date)}`}
-              className="construction-image"
-            />
-            <button className="nav-button prev-button" onClick={handlePrev}>‹</button>
-            <button className="nav-button next-button" onClick={handleNext}>›</button>
+          <div className={`image-container ${showComparison ? 'comparison-mode' : ''}`}>
+            <div className={`image-wrapper`}>
+              <img
+                src={currentImage.url}
+                alt={`Obra ${formatDate(currentImage.date)}`}
+                className="construction-image"
+              />
+              {!showComparison && (
+                <>
+                  <button className="nav-button prev-button" onClick={handlePrev}>‹</button>
+                  <button className="nav-button next-button" onClick={handleNext}>›</button>
+                </>
+              )}
+              <div className="image-label">Original</div>
+            </div>
+
+            {showComparison && aiProcessedImage && (
+              <div className="image-wrapper">
+                <img
+                  src={aiProcessedImage.url || '/api/placeholder/800/600'} // URL da imagem processada
+                  alt={`Processado por IA ${formatDate(currentImage.date)}`}
+                  className="construction-image"
+                />
+                <div className="image-label">Análise IA</div>
+              </div>
+            )}
 
             <div className="image-overlay">
               <div className="image-info">
@@ -250,12 +276,21 @@ function ConstructionHistory({ projectName, onBack }) {
                   ></div>
                   <span>{currentImage.progress}% concluído</span>
                   <button 
-                    className="ai-analysis-btn"
+                    className={`ai-analysis-btn ${showComparison ? 'comparison-active' : ''}`}
                     onClick={handleApplyAI}
                     disabled={isApplyingAI}
                   >
-                    {isApplyingAI ? '🔄 Aplicando IA...' : '🤖 Aplicar IA'}
+                    {isApplyingAI ? '🔄 Aplicando IA...' : 
+                      showComparison ? '🔄 Nova Análise' : '🤖 Aplicar IA'}
                   </button>
+                  {showComparison && (
+                    <button 
+                      className="close-comparison-btn"
+                      onClick={() => setShowComparison(false)}
+                    >
+                      ✕ Voltar para vista única
+                    </button> 
+                  )}
                 </div>
               </div>
             </div>
