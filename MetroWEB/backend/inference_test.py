@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 
 def inference_model(model_path, image_path, output_dir, channels=4):
     """
-    Script de inferência para testar seu modelo DeepLabV3+
+    Script de inferência para testar o modelo
     """
     # Configurar dispositivo
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -17,7 +17,7 @@ def inference_model(model_path, image_path, output_dir, channels=4):
     from model_plus import createDeepLabv3Plus
     model = createDeepLabv3Plus(outputchannels=channels)
     
-    # Carregar pesos - método robusto
+    # Carregar pesos
     try:
         checkpoint = torch.load(model_path, map_location=device, weights_only=False)
         
@@ -42,7 +42,7 @@ def inference_model(model_path, image_path, output_dir, channels=4):
     model.eval()
     print("Modelo preparado para inferência")
     
-    # Mapeamento de cores (ajuste conforme suas classes)
+    # Mapeamento das classes
     COLOR_MAP = {
         0: [0, 0, 0],      # Background - Preto
         1: [255, 0, 0],    # Classe 1 - Vermelho
@@ -58,9 +58,9 @@ def inference_model(model_path, image_path, output_dir, channels=4):
         print(f"Erro ao carregar imagem: {e}")
         return
     
-    # PRÉ-PROCESSAMENTO CORRETO (raw255 como no treino)
+    # PRÉ-PROCESSAMENTO (raw255 como no treino)
     def prepare_image(image_pil, target_size=512):
-        """Pré-processamento IDÊNTICO ao usado no treino"""
+        """Pré-processamento usado no treino"""
         # Redimensionar
         image_resized = image_pil.resize((target_size, target_size), Image.LANCZOS)
         
@@ -85,9 +85,6 @@ def inference_model(model_path, image_path, output_dir, channels=4):
         output = model(input_tensor)
         pred = torch.argmax(output, dim=1).squeeze(0)
         prediction = pred.cpu().numpy().astype(np.uint8)
-    
-    print(f"Predição shape: {prediction.shape}")
-    print(f"Valores únicos na predição: {np.unique(prediction)}")
     
     # Estatísticas detalhadas
     for class_id in range(channels):
@@ -132,7 +129,7 @@ def inference_model(model_path, image_path, output_dir, channels=4):
     print(f"Resultados salvos em: {output_dir}")
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='Teste de inferência para DeepLabV3+')
+    parser = argparse.ArgumentParser(description='Teste de inferência para modelo')
     parser.add_argument('--model_path', required=True, help='Caminho para o modelo .pt')
     parser.add_argument('--image_path', required=True, help='Caminho para a imagem de teste')
     parser.add_argument('--output_dir', default='./inference_results', help='Pasta para salvar resultados')
