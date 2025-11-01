@@ -224,47 +224,8 @@ app.post("/login", async (req, res) => {
             return res.status(401).json({ error: "Usuário inativo. Contate o administrador." });
         }
 
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-        // Validação de permissão
-        if (adminLogin && !user.isAdmin) {
-            return res.status(403).json({
-                error: "Você não tem permissão de administrador."
-            });
-        }
-        if (!adminLogin && user.isAdmin) {
-             return res.status(403).json({
-                error: "Admins devem entrar como administradores."
-            });
-        }
-
-        // Decide tipo de acesso
-        const accessLevel = user.isAdmin ? "ADMIN" : "USUÁRIO";
-        console.log(`Login bem-sucedido: ${email} (${accessLevel})`);
-
-        // Retorna dados básicos
-=======
-        // 5. Decide tipo de acesso
-        const accessLevel = user.isAdmin ? "ADMIN" : "USUÁRIO";
-        console.log(`Login bem-sucedido: ${email} (${accessLevel})`);
-
         // 6. Retorna dados básicos (incluindo se é admin)
->>>>>>> Stashed changes
-=======
-        // 5. Decide tipo de acesso
-        const accessLevel = user.isAdmin ? "ADMIN" : "USUÁRIO";
-        console.log(`Login bem-sucedido: ${email} (${accessLevel})`);
 
-        // 6. Retorna dados básicos (incluindo se é admin)
->>>>>>> Stashed changes
-=======
-        // 5. Decide tipo de acesso
-        const accessLevel = user.isAdmin ? "ADMIN" : "USUÁRIO";
-        console.log(`Login bem-sucedido: ${email} (${accessLevel})`);
-
-        // 6. Retorna dados básicos (incluindo se é admin)
->>>>>>> Stashed changes
         return res.json({
             ok: true,
             email: user.email,
