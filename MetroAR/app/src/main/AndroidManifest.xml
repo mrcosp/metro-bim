@@ -38,9 +38,14 @@
 
         <activity
             android:name=".MainActivity"
-            android:exported="true">
-        </activity>
+            android:exported="true" />
 
+        <activity
+            android:name=".HomeActivity"
+            android:exported="true"
+            android:theme="@style/Theme.MetroAR" />
+        <activity android:name=".ProjetosActivity" />
+        <activity android:name=".GaleriaActivity" />
     </application>
 
 </manifest>

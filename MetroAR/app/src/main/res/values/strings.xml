@@ -2,6 +2,12 @@
     <string name="app_name">MetroAR</string>
 
     <!-- Textos da tela Home -->
+    <string name="projetos">Projetos</string>
+    <string name="nome_projeto">Nome do projeto</string>
+    <string name="adicionar_projeto">Adicionar projeto</string>
+    <string name="projetos_recente">Projetos acessados recentemente</string>
+    <string name="inicio">Início</string>
+    <string name="galeria">Galeria</string>
     <string name="welcome_title">Bem vindo!</string>
     <string name="welcome_subtitle">Escolha uma opção para começar</string>
     <string name="button_projects">Projetos</string>

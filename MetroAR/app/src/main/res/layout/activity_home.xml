@@ -1,81 +1,93 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
-    android:orientation="vertical"
-    android:gravity="center"
-    android:background="#1E1E1E"
-    android:padding="32dp"
     android:layout_width="match_parent"
-    android:layout_height="match_parent">
+    android:layout_height="match_parent"
+    android:background="#1E1E1E">
 
-    <!-- Título -->
-    <TextView
-        android:text="@string/welcome_title"
-        android:textColor="#FFFFFF"
-        android:textSize="26sp"
-        android:textStyle="bold"
-        android:gravity="center"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginBottom="8dp" />
-
-    <!-- Subtítulo -->
-    <TextView
-        android:text="@string/welcome_subtitle"
-        android:textColor="#AAAAAA"
-        android:textSize="14sp"
-        android:gravity="center"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginBottom="40dp" />
-
-    <!-- Botão Projetos -->
     <LinearLayout
-        android:id="@+id/btnProjects"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
         android:orientation="vertical"
         android:gravity="center"
-        android:layout_width="match_parent"
-        android:layout_height="100dp"
-        android:backgroundTint="#2563EB"
-        android:background="@drawable/rounded_button_light"
-        android:layout_marginBottom="24dp">
+        android:layout_gravity="center"
+        android:padding="32dp">
 
-        <ImageView
-            android:src="@drawable/ic_camera"
-            android:tint="#FFFFFF"
-            android:layout_width="40dp"
-            android:layout_height="40dp"
+        <!-- Título -->
+        <TextView
+            android:text="@string/welcome_title"
+            android:textColor="#FFFFFF"
+            android:textSize="26sp"
+            android:textStyle="bold"
+            android:gravity="center"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
             android:layout_marginBottom="8dp" />
 
+        <!-- Subtítulo -->
         <TextView
-            android:text="@string/button_projects"
-            android:textColor="#FFFFFF"
-            android:textStyle="bold"
-            android:textSize="16sp" />
+            android:text="@string/welcome_subtitle"
+            android:textColor="#AAAAAA"
+            android:textSize="14sp"
+            android:gravity="center"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="40dp" />
+
+        <!-- Botão Projetos -->
+        <LinearLayout
+            android:id="@+id/btnProjects"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:minHeight="100dp"
+            android:backgroundTint="#2563EB"
+            android:background="@drawable/rounded_button_light"
+            android:layout_marginBottom="24dp">
+
+            <ImageView
+                android:src="@drawable/ic_camera"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:layout_marginBottom="8dp"
+                app:tint="#FFFFFF" />
+
+            <TextView
+                android:text="@string/button_projects"
+                android:textColor="#FFFFFF"
+                android:textStyle="bold"
+                android:textSize="16sp"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content" />
+        </LinearLayout>
+
+        <!-- Botão Galeria -->
+        <LinearLayout
+            android:id="@+id/btnGallery"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:minHeight="100dp"
+            android:background="@drawable/rounded_button_dark"
+            android:layout_marginBottom="16dp">
+
+            <ImageView
+                android:src="@drawable/ic_gallery"
+                android:tint="#FFFFFF"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:layout_marginBottom="8dp" />
+
+            <TextView
+                android:text="@string/button_gallery"
+                android:textColor="#FFFFFF"
+                android:textStyle="bold"
+                android:textSize="16sp"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content" />
+        </LinearLayout>
+
     </LinearLayout>
-
-    <!-- Botão Galeria -->
-    <LinearLayout
-        android:id="@+id/btnGallery"
-        android:orientation="vertical"
-        android:gravity="center"
-        android:layout_width="match_parent"
-        android:layout_height="100dp"
-        android:background="@drawable/rounded_button_dark"
-        android:layout_marginBottom="16dp">
-
-        <ImageView
-            android:src="@drawable/ic_gallery"
-            android:tint="#FFFFFF"
-            android:layout_width="40dp"
-            android:layout_height="40dp"
-            android:layout_marginBottom="8dp" />
-
-        <TextView
-            android:text="@string/button_gallery"
-            android:textColor="#FFFFFF"
-            android:textStyle="bold"
-            android:textSize="16sp" />
-    </LinearLayout>
-
-</LinearLayout>
+</ScrollView>

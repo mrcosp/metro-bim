@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="0dp"
+    android:orientation="vertical"
+    android:padding="32dp"
+    android:background="@drawable/dialog_background"
+    android:gravity="center">
+
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <!-- Botão de fechar -->
+            <ImageButton
+                android:id="@+id/btnCloseDialog"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
+                android:layout_gravity="end"
+                android:backgroundTint="#B91C1C"
+                android:background="@drawable/rounded_button"
+                android:src="@drawable/ic_close"
+                android:contentDescription="Fechar"
+                app:tint="#FFFFFF" />
+
+            <!-- Título -->
+            <TextView
+                android:text="Adicionar novo projeto"
+                android:textColor="#000000"
+                android:textStyle="bold"
+                android:textSize="24sp"
+                android:gravity="center_horizontal"
+                android:layout_marginTop="16dp"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content" />
+
+            <!-- Campo nome -->
+            <EditText
+                android:id="@+id/inputDialogName"
+                android:hint="Nome do projeto"
+                android:inputType="text"
+                android:background="@drawable/edittext_rounded"
+                android:backgroundTint="#AAAAAA"
+                android:textColor="#000000"
+                android:textColorHint="#777777"
+                android:layout_marginTop="20dp"
+                android:layout_marginHorizontal="16dp"
+                android:paddingVertical="12dp"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content" />
+
+            <!-- Campo data -->
+            <EditText
+                android:id="@+id/inputDialogDate"
+                android:hint="Data de início"
+                android:inputType="date"
+                android:background="@drawable/edittext_rounded"
+                android:backgroundTint="#AAAAAA"
+                android:textColor="#000000"
+                android:textColorHint="#777777"
+                android:layout_marginTop="16dp"
+                android:layout_marginHorizontal="16dp"
+                android:paddingVertical="12dp"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content" />
+
+            <!-- Botão Criar -->
+            <Button
+                android:id="@+id/btnCreateProject"
+                android:text="Criar!"
+                android:textStyle="bold"
+                android:backgroundTint="#1E3A8A"
+                android:textColor="#FFFFFF"
+                android:layout_gravity="end"
+                android:layout_marginTop="24dp"
+                android:layout_marginBottom="8dp"
+                android:paddingHorizontal="24dp"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content" />
+
+        </LinearLayout>
+    </ScrollView>
+
+</LinearLayout>

@@ -30,11 +30,10 @@ class LoginActivity : AppCompatActivity() {
             val enteredPassword = passwordEditText.text.toString()
 
             if (enteredUsername == VALID_USERNAME && enteredPassword == VALID_PASSWORD) {
-                // Login successful, navigate to MainActivity
                 Toast.makeText(this, "Login Successful!", Toast.LENGTH_SHORT).show()
-                val intent = Intent(this, MainActivity::class.java)
+                val intent = Intent(this, HomeActivity::class.java)
                 startActivity(intent)
-                finish() // Finish LoginActivity so user can't go back to it with the back button
+                finish()
             } else {
                 // Login failed
                 Toast.makeText(this, "Invalid username or password", Toast.LENGTH_LONG).show()

@@ -11,9 +11,8 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content">
 
-        <!-- Título -->
         <TextView
-            android:text="Projetos"
+            android:text="@string/projetos"
             android:textSize="26sp"
             android:textStyle="bold"
             android:textColor="#FFFFFF"
@@ -22,7 +21,6 @@
             android:layout_height="wrap_content"
             android:layout_marginBottom="24dp" />
 
-        <!-- Campo de nome do projeto e botão de adicionar -->
         <LinearLayout
             android:orientation="horizontal"
             android:gravity="center_vertical"
@@ -32,30 +30,30 @@
 
             <EditText
                 android:id="@+id/inputProjectName"
-                android:hint="Nome do projeto"
-                android:hintTextColor="#AAAAAA"
+                android:hint="@string/nome_projeto"
+                android:textColorHint="#AAAAAA"
                 android:textColor="#FFFFFF"
                 android:padding="10dp"
                 android:background="@drawable/edittext_rounded"
                 android:layout_weight="1"
                 android:layout_width="0dp"
-                android:layout_height="wrap_content" />
+                android:layout_height="wrap_content"
+                android:inputType="text" />
 
             <ImageButton
                 android:id="@+id/btnAddProject"
                 android:src="@drawable/ic_add"
                 android:backgroundTint="#22C55E"
                 android:background="@drawable/add_button"
-                android:contentDescription="Adicionar projeto"
+                android:contentDescription="@string/adicionar_projeto"
                 android:layout_width="48dp"
                 android:layout_height="48dp"
                 android:layout_marginStart="8dp"
-                android:tint="#FFFFFF" />
+                app:tint="#FFFFFF" />
         </LinearLayout>
 
-        <!-- Subtítulo -->
         <TextView
-            android:text="Projetos acessados recentemente"
+            android:text="@string/projetos_recente"
             android:textSize="14sp"
             android:textStyle="bold"
             android:textColor="#AAAAAA"
@@ -63,24 +61,23 @@
             android:layout_height="wrap_content"
             android:layout_marginBottom="16dp" />
 
-        <!-- Grade de pastas -->
-        <GridLayout
+        <androidx.gridlayout.widget.GridLayout
             android:id="@+id/gridProjects"
-            android:columnCount="2"
-            android:rowCount="3"
-            android:alignmentMode="alignMargins"
-            android:columnOrderPreserved="false"
+            app:columnCount="2"
+            app:rowCount="3"
+            app:alignmentMode="alignMargins"
+            app:columnOrderPreserved="false"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginBottom="80dp">
 
-            <!-- Item de pasta -->
             <LinearLayout
                 android:orientation="vertical"
                 android:layout_margin="8dp"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:layout_columnWeight="1"
+                app:layout_columnSpan="1"
+                app:layout_gravity="fill_horizontal"
                 android:gravity="center_horizontal">
 
                 <ImageView
@@ -93,18 +90,19 @@
                     android:textColor="#FFFFFF"
                     android:textStyle="bold"
                     android:textSize="13sp"
-                    android:layout_marginTop="4dp" />
+                    android:layout_marginTop="4dp"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content" />
 
                 <TextView
                     android:text="Data: 06/01/2021"
                     android:textColor="#AAAAAA"
-                    android:textSize="12sp" />
+                    android:textSize="12sp"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content" />
             </LinearLayout>
+        </androidx.gridlayout.widget.GridLayout>
 
-            <!-- Copie o bloco acima para mais pastas -->
-        </GridLayout>
-
-        <!-- Barra inferior -->
         <LinearLayout
             android:orientation="horizontal"
             android:gravity="center"
@@ -115,20 +113,20 @@
                 android:id="@+id/btnHome"
                 android:src="@drawable/ic_home"
                 android:background="@android:color/transparent"
-                android:contentDescription="Início"
+                android:contentDescription="@string/inicio"
                 android:layout_width="64dp"
                 android:layout_height="64dp"
-                android:tint="#3B82F6" />
+                app:tint="#3B82F6" />
 
             <ImageButton
                 android:id="@+id/btnGallery"
                 android:src="@drawable/ic_gallery"
                 android:background="@android:color/transparent"
-                android:contentDescription="Galeria"
+                android:contentDescription="@string/galeria"
                 android:layout_width="64dp"
                 android:layout_height="64dp"
                 android:layout_marginStart="16dp"
-                android:tint="#3B82F6" />
+                app:tint="#3B82F6" />
         </LinearLayout>
 
     </LinearLayout>

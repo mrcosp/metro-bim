@@ -4,7 +4,6 @@ import android.content.Intent
 import android.os.Bundle
 import android.widget.LinearLayout
 import androidx.appcompat.app.AppCompatActivity
-import com.wepink.metroar.GaleriaActivity
 
 class HomeActivity : AppCompatActivity() {
 
@@ -17,7 +16,7 @@ class HomeActivity : AppCompatActivity() {
 
         // Ir para LoginActivity (ou outra que represente "Projetos")
         btnProjects.setOnClickListener {
-            val intent = Intent(this, LoginActivity::class.java)
+            val intent = Intent(this, ProjetosActivity::class.java)
             startActivity(intent)
         }
 
