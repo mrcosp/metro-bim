@@ -29,7 +29,7 @@ app.use((req, res, next) => {
 
 // Endpoint de verificação de saúde
 app.get('/health', (req, res) => {
-    console.log('✅ Health check OK');
+    console.log('Health check OK');
     res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
@@ -84,8 +84,8 @@ const Image = mongoose.model("Image", imgSchema);
 
 // Conexão MongoDB
 mongoose.connect(process.env.MONGO_URL)
-    .then(() => console.log("✅ MongoDB conectado!"))
-    .catch(err => console.error("❌ Erro ao conectar MongoDB:", err));
+    .then(() => console.log("MongoDB conectado!"))
+    .catch(err => console.error("Erro ao conectar MongoDB:", err));
 
 
 // Configuração do CORS (Permite requisições locais)
@@ -109,70 +109,68 @@ app.post('/api/captures/upload', async (req, res) => {
         const {
             nomeObra, pontoDeVista, descricao, criado_em,
             gps, orientacao, imageBase64,
-            folder 
+            folder // <-- 1. RECEBENDO O CAMPO 'folder' DO ANDROID
         } = req.body;
 
-        // --- VALIDAÇÃO (Corrigida para Web/Android) ---
-        if (imageBase64) { // Se tem imagem (Android)
-            if (!nomeObra) {
-                return res.status(400).json({ success: false, message: "Upload de imagem (Android) requer 'nomeObra'." });
-            }
-            if (!folder) {
-                return res.status(400).json({ success: false, message: "Upload de imagem (Android) requer 'folder'." });
-            }
-        } 
-        else { // Se NÃO tem imagem (Web criando pasta)
-            if (!folder) {
-                 return res.status(400).json({ success: false, message: "Criação de pasta (Web) requer o campo 'folder'." });
-            }
+        if (!nomeObra) {
+            return res.status(400).json({ success: false, message: "Campo 'nomeObra' é obrigatório." });
         }
-        // --- FIM DA VALIDAÇÃO ---
+        
+        if (!folder) {
+             return res.status(400).json({ success: false, message: "Campo 'folder' é obrigatório." });
+        }
 
-
-        // Lógica para upload SEM imagem (Criação de pasta pela Web)
+        // Lógica para upload SEM imagem (se o Android enviar)
         if (!imageBase64) {
             const newFolderEntry = new Image({
-                name: nomeObra || folder, 
-                folder: folder.toLowerCase().trim(), 
+                name: nomeObra,
+                folder: folder.toLowerCase().trim(), // Limpa o nome da pasta
                 criado_em: new Date(criado_em || Date.now()),
-                nome_da_obra: nomeObra || folder,
+                nome_da_obra: nomeObra,
                 descricao: descricao || 'Projeto criado (sem imagem)',
                 gps: gps || {},
                 orientacao: orientacao || {},
             });
 
             await newFolderEntry.save();
-            console.log(`📁 Novo registro (sem imagem) criado: ${folder}`);
+            console.log(`📁 Novo registro (sem imagem) criado: ${nomeObra}`);
             return res.json({ success: true, message: "Registro (sem imagem) criado." });
         }
 
-        // Lógica principal (Upload com Imagem Base64 do Android)
+        // Lógica principal (Upload com Imagem Base64)
         
+        // 1. Converte Base64 para Buffer binário
         const base64Data = imageBase64.replace(/^data:image\/\w+;base64,/, "");
         const imageBuffer = Buffer.from(base64Data, 'base64');
         
+        // 2. Cria o novo documento Mongoose
         const newCapture = new Image({
             name: nomeObra,
+            // 2. ⚠️ CORREÇÃO: Usa o 'folder' enviado pelo app (limpo)
             folder: folder.toLowerCase().trim(), 
             criado_em: new Date(criado_em || Date.now()),
+            
             nome_da_obra: nomeObra,
             ponto_de_vista: pontoDeVista,
             descricao: descricao,
+            
             img: {
                 data: imageBuffer,
                 contentType: 'image/jpeg' 
             },
-            gps: gps || {}, 
-            orientacao: orientacao || {}
+            
+            gps: gps || {}, // Fallback para objetos vazios
+            orientacao: orientacao || {} // Fallback para objetos vazios
         });
 
+        // 3. Salva no MongoDB
         await newCapture.save();
         
-        console.log(`✅ Novo upload do Android salvo: ${nomeObra} (Pasta: ${folder})`);
+        console.log(`Novo upload do Android salvo: ${nomeObra} (Pasta: ${folder})`);
         return res.json({ success: true, message: "Captura salva com sucesso no MongoDB!" });
 
     } catch (err) {
-        console.error("❌ Erro no /api/captures/upload:", err);
+        console.error("Erro no /api/captures/upload:", err);
         return res.status(500).json({ success: false, message: "Erro interno do servidor durante o salvamento." });
     }
 });
@@ -182,15 +180,16 @@ app.post('/api/captures/upload', async (req, res) => {
 // ROTAS EXISTENTES (WEB)
 // -----------------------------------------------------
 
-// LOGIN (LÓGICA CORRIGIDA - Não exige mais 'adminLogin' do frontend)
 app.post("/login", async (req, res) => {
     try {
+        // 1. Recebe apenas email e cpf.
         const { email, cpf } = req.body; 
 
         if (!email || !cpf) {
             return res.status(400).json({ error: "Email e CPF são obrigatórios." });
         }
 
+        // 2. Busca usuário no banco
         let user = await User.findOne({ email });
 
         if (!user) {
@@ -198,28 +197,45 @@ app.post("/login", async (req, res) => {
             return res.status(401).json({
                 error: "Usuário não cadastrado. Peça para um admin cadastrar."
             });
+            
+            // Se precisar da lógica de autocadastro de admin:
+            /*
+            if (adminLogin) { // <-- precisaria enviar 'adminLogin' do frontend
+                console.log('Criando novo usuário admin...');
+                const cpfHash = await bcrypt.hash(cpf, 10);
+                user = new User({ email, cpfHash, isAdmin: true, active: true });
+                await user.save();
+                console.log('Novo usuário admin criado com sucesso');
+            } else {
+                return res.status(401).json({
+                    error: "Usuário não cadastrado. Peça para um admin cadastrar."
+                });
+            }
+            */
         }
 
-        // Verifica CPF
+        // 3. Verifica CPF
         const validCpf = await bcrypt.compare(cpf, user.cpfHash);
         if (!validCpf) {
             return res.status(401).json({ error: "CPF incorreto." });
         }
 
-        // Verifica se está ativo
+        // 4. Verifica se está ativo
         if (!user.active) {
             return res.status(401).json({ error: "Usuário inativo. Contate o administrador." });
         }
 
-        // Decide tipo de acesso
+        // 5. REMOVIDO: Bloco de validação 'adminLogin' (Não precisamos mais)
+
+        // 6. Decide tipo de acesso
         const accessLevel = user.isAdmin ? "ADMIN" : "USUÁRIO";
         console.log(`Login bem-sucedido: ${email} (${accessLevel})`);
 
-        // Retorna dados básicos
+        // 7. Retorna dados básicos (incluindo se é admin)
         return res.json({
             ok: true,
             email: user.email,
-            isAdmin: user.isAdmin 
+            isAdmin: user.isAdmin // O frontend web usará isso para redirecionar
         });
 
     } catch (err) {
@@ -338,60 +354,25 @@ app.get('/image/:id', async (req, res) => {
     }
 });
 
-// -------------------------------------------------------------------
-// ⚠️ ROTA WEB ANTIGA (CORRIGIDA PARA REACT) ⚠️
-// -------------------------------------------------------------------
-// Upload único ou múltiplo (Rota Antiga do Web via Multer)
+// Upload único ou múltiplo 
 app.post('/upload', upload.array('images', 20), async (req, res) => {
-    let folder = req.body.folder; // pasta escolhida
-    if (!folder) folder = req.body.newFolder; // criar nova pasta
+    let folder = req.body.folder; 
+    if (!folder) folder = req.body.newFolder; 
 
-    // Validação
-    if (!folder && (!req.files || req.files.length === 0)) {
-        return res.status(400).json({ success: false, message: "Nenhum dado enviado (nem pasta, nem arquivos)." });
-    }
+    if (!req.files || req.files.length === 0) return res.send("Nenhum arquivo enviado");
 
     try {
-        // --- CORREÇÃO: LÓGICA PARA CRIAR PASTA VAZIA (Web/React) ---
-        if ((!req.files || req.files.length === 0) && folder) {
-            
-            const existing = await Image.findOne({ folder: folder.toLowerCase().trim() });
-            if (existing) {
-                console.log(`Pasta [${folder}] já existe.`);
-                // Retorna erro 409 (Conflito) em JSON
-                return res.status(409).json({ success: false, message: "Essa pasta já existe." });
-            }
-
-            const newFolderEntry = new Image({
-                name: folder, // Usa o nome da pasta como nome
-                folder: folder.toLowerCase().trim(),
-                criado_em: new Date(),
-                nome_da_obra: folder,
-                descricao: 'Projeto criado via web'
-            });
-            await newFolderEntry.save();
-            console.log(`📁 Nova pasta (web) criada: ${folder}`);
-            
-            // ⚠️ MUDANÇA CRÍTICA: Retorna JSON (201 Created) em vez de redirect
-            return res.status(201).json({ success: true, message: "Pasta criada com sucesso." });
-        }
-
-        // --- LÓGICA ANTIGA (Se houver arquivos) ---
         const images = req.files.map(file => ({
             name: path.parse(file.originalname).name,
-            folder: folder.toLowerCase().trim(), // Limpa o nome da pasta
+            folder,
             img: { data: file.buffer, contentType: file.mimetype }
         }));
 
         await Image.insertMany(images);
-        
-        // ⚠️ MUDANÇA CRÍTICA: Retorna JSON (201 Created) em vez de redirect
-        return res.status(201).json({ success: true, message: "Imagens salvas com sucesso." });
-
+        res.redirect('/');
     } catch (err) {
-        console.log("Erro no /upload:", err);
-        // Retorna Erro 500 em JSON
-        return res.status(500).json({ success: false, message: "Erro ao salvar dados" });
+        console.log(err);
+        res.send("Erro ao salvar imagens");
     }
 });
 
@@ -399,17 +380,17 @@ app.post('/upload', upload.array('images', 20), async (req, res) => {
 app.delete('/delete/:id', async (req, res) => {
     try {
         await Image.findByIdAndDelete(req.params.id);
-        res.sendStatus(200); // OK para React/Fetch
+        res.sendStatus(200);
     } catch (err) {
         console.log(err);
-        res.status(500).json({ success: false, message: 'Erro ao deletar imagem' });
+        res.sendStatus(500);
     }
 });
 
 import { spawn } from "child_process";
 
 // Rota de Inferência (Python)
-app.post("/inference/:id", async (req, res) => { // (Corrigido para POST)
+app.post("/inference/:id", async (req, res) => {
     try {
         const imageId = req.params.id;
 
@@ -429,11 +410,11 @@ app.post("/inference/:id", async (req, res) => { // (Corrigido para POST)
 
         // Rodar script Python
         const py = spawn("python", [
-            "inference_test.py",
-            "--model_path", "var_3plus_weights_30.pt",
-            "--image_path", tempImagePath,
-            "--output_dir", resultsDir,
-            "--channels", "4"
+          "inference_test.py",
+          "--model_path", "var_3plus_weights_30.pt",
+          "--image_path", tempImagePath,
+          "--output_dir", resultsDir,
+          "--channels", "4"
         ]);
 
         py.stdout.on("data", (data) => console.log(`PY: ${data}`));

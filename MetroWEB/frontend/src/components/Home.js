@@ -146,55 +146,47 @@ function Home({ onLogout }) {
     }));
   };
 
-  const handleCreateNewProject = async () => {
-    if (projectData.name.trim() === '') return;
-  
-    try {
-      const res = await fetch('http://localhost:3000/api/captures/upload', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          
-          nomeObra: projectData.name,
-          folder: projectData.name,
-
-          descricao: projectData.description || 'Projeto criado via web',
-          gps: {},
-          orientacao: {},
-          imageBase64: null, 
-
-          totalArea: projectData.totalArea,
-          startDate: projectData.startDate,
-          expectedCompletion: projectData.expectedCompletion,
-          responsible: projectData.responsible
-        })
-      });
-  
-      const responseData = await res.json();
-
-      if (res.ok) {
-        const foldersRes = await fetch('http://localhost:3000/api/folders');
-        const foldersData = await foldersRes.json();
-        setFolders(foldersData);
-        
-        setProjectData({
-          name: '',
-          totalArea: '',
-          startDate: '',
-          expectedCompletion: '',
-          responsible: '',
-          description: ''
-        });
-        setShowNewProjectModal(false);
-      } else {
-
-        console.error('Erro ao criar projeto:', responseData.message);
-        alert(`Erro: ${responseData.message}`);
-      }
-    } catch (err) {
-      console.error('Erro ao criar projeto (Catch):', err);
-    }
-  };
+  const handleCreateNewProject = async () => {
+    if (projectData.name.trim() === '') return;
+  
+    try {
+      const res = await fetch('http://localhost:3000/api/captures/upload', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          nomeObra: projectData.name,
+          descricao: projectData.description || 'Projeto criado via web',
+          gps: {},
+          orientacao: {},
+          imageBase64: '',
+          totalArea: projectData.totalArea,
+          startDate: projectData.startDate,
+          expectedCompletion: projectData.expectedCompletion,
+          responsible: projectData.responsible
+        })
+      });
+  
+      if (res.ok) {
+        const foldersRes = await fetch('http://localhost:3000/api/folders');
+        const foldersData = await foldersRes.json();
+        setFolders(foldersData);
+        
+        setProjectData({
+          name: '',
+          totalArea: '',
+          startDate: '',
+          expectedCompletion: '',
+          responsible: '',
+          description: ''
+        });
+        setShowNewProjectModal(false);
+      } else {
+        console.error('Erro ao criar projeto');
+      }
+    } catch (err) {
+      console.error('Erro ao criar projeto:', err);
+    }
+  };
 
   const formatDate = (dateString) => {
     const date = new Date(dateString);
