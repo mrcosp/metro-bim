@@ -501,7 +501,7 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
         private const val REQUEST_CODE_PERMISSIONS = 10
 
         // ⚠️ Lembre-se de usar o IP correto do seu servidor Mongoose
-        private const val BASE_URL = "http://192.168.15.22:3000/" // IP do Emulador
+        private const val BASE_URL = "http://192.168.15.56:3000/" // IP do Emulador
 
         // ATUALIZADO: Lista de permissões sem WRITE_EXTERNAL_STORAGE
         private val REQUIRED_PERMISSIONS =
