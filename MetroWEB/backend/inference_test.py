@@ -12,103 +12,113 @@ import sys
 from model_plus import createDeepLabv3Plus
 from network._deeplab import DeepLabV3
 
-# --- 1. CONFIGURAÇÕES DE PROGRESSO (Lógica Nova) ---
+# --- 1. CONFIGURAÇÕES DE PROGRESSO ---
 MAPEAMENTO_ID_NOME = {
-    1: 'total_concreto',      # ASSUMINDO 1 = VERMELHO
-    2: 'total_metal',         # ASSUMINDO 2 = VERDE
-    3: 'total_deck_metalico'  # ASSUMINDO 3 = AZUL
+    1: 'total_concreto',     # ASSUMINDO 1 = VERMELHO
+    2: 'total_metal',        # ASSUMINDO 2 = VERDE
+    3: 'total_deck_metalico' # ASSUMINDO 3 = AZUL
 }
 
-# --- 2. FUNÇÃO DE CONTAGEM DE INSTÂNCIAS (Lógica Nova) ---
+# --- 2. FUNÇÕES DE CONTAGEM (Instâncias e Pixels) ---
 def contar_instancias(prediction_map):
+    """(LÓGICA ANTIGA) Conta quantos 'contornos' (objetos) de cada classe existem."""
     contagem_real = {}
     for class_id, class_name in MAPEAMENTO_ID_NOME.items():
         mask = (prediction_map == class_id).astype(np.uint8)
         contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         num_instancias = len(contours)
-        
         if num_instancias > 0:
             contagem_real[class_name] = num_instancias
     return contagem_real
 
-# --- 3. FUNÇÃO DE ATUALIZAR PROGRESSO (Lógica Nova) ---
-def atualizar_progresso(area_nome_base, nova_contagem):
+def contar_area_pixels(prediction_map):
+    """(NOVA LÓGICA) Conta quantos 'pixels' de cada classe existem."""
+    contagem_real_pixels = {}
+    for class_id, class_name in MAPEAMENTO_ID_NOME.items():
+        # Cria a máscara (array de True/False)
+        mask = (prediction_map == class_id)
+        
+        # Conta quantos pixels são 'True' (ou seja, pertencem à classe)
+        num_pixels = np.count_nonzero(mask)
+        
+        if num_pixels > 0:
+            # Salva a contagem de PIXELS
+            contagem_real_pixels[class_name] = int(num_pixels) # Converte para int nativo
+            
+    return contagem_real_pixels
+# -------------------------------------------------------------------
+
+# --- 3. FUNÇÃO DE ATUALIZAR PROGRESSO (Com lógica MAX e bug corrigido) ---
+def atualizar_progresso(area_nome_base, nova_contagem_ia):
     base_dir = os.path.dirname(os.path.abspath(__file__))
     
-    # --- MUDANÇA AQUI ---
+    # Aponta para a pasta /json_files/
     json_dir = os.path.join(base_dir, "json_files")
     os.makedirs(json_dir, exist_ok=True) # Garante que a pasta exista
     ARQUIVO_PLANO = os.path.join(json_dir, f"plano_base_{area_nome_base}.json")
     ARQUIVO_PROGRESSO = os.path.join(json_dir, f"progresso_{area_nome_base}.json")
-    # --- FIM DA MUDANÇA ---
 
+    # 1. Carregar Plano Base
     if not os.path.exists(ARQUIVO_PLANO):
-        raise Exception(f"Arquivo de plano '{ARQUIVO_PLANO}' não encontrado.")
-
-    with open(ARQUIVO_PLANO, 'r', encoding='utf-8') as f: # Adicionado encoding
+        raise Exception(f"Arquivo de plano '{ARQUIVO_PLANO}' não encontrado. (Execute o Passo 1 de Calibração)")
+    with open(ARQUIVO_PLANO, 'r', encoding='utf-8') as f:
         plano_base = json.load(f)
-        
-    if os.path.exists(ARQUIVO_PROGRESSO):
-        with open(ARQUIVO_PROGRESSO, 'r', encoding='utf-8') as f: # Adicionado encoding
-            progresso_atual = json.load(f)
-    else:
-        progresso_atual = {key.replace('total_', ''): 0 for key in plano_base if key.startswith('total_')}
-        progresso_atual['elementos_executados_geral'] = 0
-        
-    # Atualiza o progresso
-    houve_mudanca = False
-    for nome_classe_ia, contagem_ia in nova_contagem.items():
-        chave_progresso = nome_classe_ia.replace('total_', '') 
-        if chave_progresso in progresso_atual:
-            chave_plano = f"total_{chave_progresso}"
-            limite_plano = plano_base.get(chave_plano, 0)
-            
-            valor_antigo = progresso_atual[chave_progresso]
-            valor_novo = valor_antigo + contagem_ia
-            valor_final = min(valor_novo, limite_plano)
-            
-            if progresso_atual[chave_progresso] != valor_final:
-                progresso_atual[chave_progresso] = valor_final
-                houve_mudanca = True
 
-    # Recalcula Totais
-    total_executado = 0
-    if houve_mudanca:
-        for key in progresso_atual:
-            if key != 'elementos_executados_geral':
-                total_executado += progresso_atual[key]
-        progresso_atual['elementos_executados_geral'] = total_executado
-    else:
-        total_executado = progresso_atual.get('elementos_executados_geral', 0)
-        
-    total_planejado = plano_base.get('total_elementos_geral', 1)
-    if total_planejado == 0: total_planejado = 1 
-        
-    percentual_geral = (total_executado / total_planejado) * 100
+    # 2. Carregar Progresso Atual (ou criar novo)
+    progresso_atual = {}
+    if os.path.exists(ARQUIVO_PROGRESSO):
+        try:
+            with open(ARQUIVO_PROGRESSO, 'r', encoding='utf-8') as f:
+                progresso_atual = json.load(f)
+        except json.JSONDecodeError:
+            progresso_atual = {} 
+
+    # 3. Atualizar Progresso (Lógica MAX)
+    for nome_classe_ia, contagem_ia in nova_contagem_ia.items():
+        chave_progresso = nome_classe_ia.replace('total_', '') 
+        if chave_progresso not in progresso_atual:
+             progresso_atual[chave_progresso] = 0 
+
+        chave_plano = nome_classe_ia 
+        limite_plano = plano_base.get(chave_plano, 0)
+        valor_antigo = progresso_atual[chave_progresso]
+        valor_novo_max = max(valor_antigo, contagem_ia)
+        valor_final = min(valor_novo_max, limite_plano)
+        progresso_atual[chave_progresso] = valor_final
+
+    # 4. Recalcular o Total Geral
     
-    # Salva o progresso
-    with open(ARQUIVO_PROGRESSO, 'w', encoding='utf-8') as f: # Adicionado encoding
-        json.dump(progresso_atual, f, indent=2)
+    # --- CORREÇÃO DO BUG 'int' object has no attribute 'replace' ---
+    # Usamos .values() em vez de .keys()
+    total_executado_geral = sum(progresso_atual.get(v.replace('total_', ''), 0) for v in MAPEAMENTO_ID_NOME.values())
+    
+    progresso_atual['elementos_executados_geral'] = total_executado_geral
+
+    # 5. Salvar o arquivo de progresso
+    with open(ARQUIVO_PROGRESSO, 'w', encoding='utf-8') as f:
+        json.dump(progresso_atual, f, indent=4)
         
-    # Retorna o JSON de resultado
+    # 6. Preparar JSON de Retorno
+    total_planejado_geral = plano_base.get('total_elementos_geral', 1) 
+    if total_planejado_geral == 0: total_planejado_geral = 1 
+    percentual_geral = (total_executado_geral / total_planejado_geral) * 100
+    
     return {
         "area_inspecionada": area_nome_base,
         "porcentagem_geral": round(percentual_geral, 2),
-        "total_executado": total_executado,
-        "total_planejado": total_planejado,
+        "total_executado": total_executado_geral,
+        "total_planejado": total_planejado_geral,
         "detalhes_executados": progresso_atual,
         "detalhes_plano": plano_base
     }
+# --- FIM DA FUNÇÃO ---
 
-# --- 4. SUA FUNÇÃO DE INFERÊNCIA (MODIFICADA) ---
-def inference_model(model_path, image_path, output_dir, channels, area_nome): # <-- Adicionado 'area_nome'
-    # Configurar dispositivo
+# --- 4. FUNÇÃO DE INFERÊNCIA ---
+def inference_model(model_path, image_path, output_dir, channels, area_nome):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    print(f"Usando dispositivo: {device}", file=sys.stderr) # Log no Stderr
+    print(f"Usando dispositivo: {device}", file=sys.stderr)
     
-    # --- Carregar modelo ---
     try:
-        # Adicionamos a classe como "segura"
         torch.serialization.add_safe_globals([DeepLabV3])
         model = torch.load(model_path, map_location=device, weights_only=False)
         model = model.to(device)
@@ -118,15 +128,8 @@ def inference_model(model_path, image_path, output_dir, channels, area_nome): # 
         print(f"Erro ao carregar modelo: {e}", file=sys.stderr)
         return
 
-    # Mapeamento das classes (Seu)
-    COLOR_MAP = {
-        0: [0, 0, 0],       # Background - Preto
-        1: [255, 0, 0],     # Classe 1 - Vermelho
-        2: [0, 255, 0],     # Classe 2 - Verde
-        3: [0, 0, 255]      # Classe 3 - Azul
-    }
+    COLOR_MAP = { 0: [0, 0, 0], 1: [255, 0, 0], 2: [0, 255, 0], 3: [0, 0, 255] }
     
-    # --- Carregar e preparar imagem ---
     try:
         original_image = Image.open(image_path).convert('RGB')
         print(f"Imagem original: {original_image.size}", file=sys.stderr)
@@ -134,7 +137,6 @@ def inference_model(model_path, image_path, output_dir, channels, area_nome): # 
         print(f"Erro ao carregar imagem: {e}", file=sys.stderr)
         return
     
-    # PRÉ-PROCESSAMENTO (raw255 como no treino) (Seu)
     def prepare_image(image_pil, target_size=512):
         image_resized = image_pil.resize((target_size, target_size), Image.LANCZOS)
         image_array = np.array(image_resized).astype(np.float32)
@@ -144,64 +146,65 @@ def inference_model(model_path, image_path, output_dir, channels, area_nome): # 
     
     input_tensor, resized_image = prepare_image(original_image)
     
-    # --- Fazer predição ---
     with torch.no_grad():
         output = model(input_tensor)
         pred = torch.argmax(output, dim=1).squeeze(0)
         prediction_map = pred.cpu().numpy().astype(np.uint8)
     
-    # --- Criar visualizações (Seu) ---
     os.makedirs(output_dir, exist_ok=True)
-    
     original_resized = original_image.resize((512, 512), Image.LANCZOS)
     original_array = np.array(original_resized).astype(np.float32)
     overlay_original = original_array.copy()
-    
     for class_id, color in COLOR_MAP.items():
         if class_id != 0:
             mask = prediction_map == class_id
             overlay_original[mask] = 0.6 * overlay_original[mask] + 0.4 * np.array(color)
-    
     overlay_original = overlay_original.astype(np.uint8)
-    
-    # Salvar resultados
     overlay_path = os.path.join(output_dir, 'overlay.png')
     Image.fromarray(overlay_original).save(overlay_path)
     original_image.save(os.path.join(output_dir, 'original.png'))
-    
     print(f"Resultados de imagem salvos em: {output_dir}", file=sys.stderr)
 
-    # --- 5. LÓGICA DE PROGRESSO (NOVA) ---
-    try:
-        # 4. Contar Instâncias
-        contagem_ia = contar_instancias(prediction_map)
-        
-        if not contagem_ia:
-            raise Exception("Nenhum material (Concreto, Metal, Deck) foi detectado na imagem.")
 
-        # 5. Atualizar Progresso
+    # --- 5. LÓGICA DE PROGRESSO (Atualizada com DEBUG) ---
+    try:
+        # Trocamos para a função de contagem de PIXELS
+        contagem_ia = contar_area_pixels(prediction_map) 
+
+        # --- LINHA DE DEBUG ADICIONADA ---
+        # Esta linha imprime a contagem bruta no terminal (stderr)
+        print(f"DEBUG: Contagem de pixels brutos detectados: {json.dumps(contagem_ia)}", file=sys.stderr)
+        # --- FIM DA LINHA DE DEBUG ---
+
+        if not contagem_ia:
+            raise Exception("Nenhum material detectado na imagem.")
+        
+        # Chama a função de progresso (com bug do .keys() corrigido)
         resultado_progresso = atualizar_progresso(area_nome, contagem_ia)
         
-        # Adiciona o caminho do overlay ao resultado final
-        # (Corrigido para 'overlay' para bater com o seu frontend)
         resultado_progresso['overlay'] = f"/results/{os.path.basename(output_dir)}/overlay.png"
         
-        # 6. Imprimir JSON final para o Node.js (NO STDOUT)
+        # Imprime o JSON final para o Node.js
         print(json.dumps(resultado_progresso, indent=2))
         
     except Exception as e:
+        # Imprime o JSON de ERRO para o Node.js
         print(json.dumps({
             "error": f"Falha ao calcular progresso: {e}",
-            "overlay": f"/results/{os.path.basename(output_dir)}/overlay.png" # Ainda retorna o overlay
+            "overlay": f"/results/{os.path.basename(output_dir)}/overlay.png"
         }))
 
-# --- 6. PONTO DE ENTRADA (MAIN) ---
+# --- 6. PONTO DE ENTRADA (MAIN) (Corrigido) ---
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Teste de inferência para modelo')
     parser.add_argument('--model_path', required=True, help='Caminho para o modelo .pt')
     parser.add_argument('--image_path', required=True, help='Caminho para a imagem de teste')
     parser.add_argument('--output_dir', default='./inference_results', help='Pasta para salvar resultados')
+    
+    # --- CORREÇÃO DO BUG 'add_Falser' ---
     parser.add_argument('--channels', type=int, default=4, help='Número de classes')
+    # --- FIM DA CORREÇÃO ---
+    
     parser.add_argument('--area', required=True, help='A zona de inspeção (ex: plataforma)')
     
     args = parser.parse_args()
