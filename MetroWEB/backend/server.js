@@ -10,6 +10,7 @@ import path, { dirname } from "path";
 import { fileURLToPath } from "url";
 import cors from 'cors';
 import fs from "fs"; 
+import { spawn } from "child_process"; // <-- IMPORT NO TOPO
 
 dotenv.config();
 
@@ -42,7 +43,7 @@ app.set("views", __dirname);
 app.set("view engine", "ejs");
 
 // -----------------------------------------------------
-// 1. MONGODB SCHEMA (Atualizado para Android e Web)
+// 1. MONGODB SCHEMA (Seu schema)
 // -----------------------------------------------------
 const imgSchema = new mongoose.Schema({
     // Campos da UI Web e Android
@@ -88,28 +89,27 @@ mongoose.connect(process.env.MONGO_URL)
     .catch(err => console.error("Erro ao conectar MongoDB:", err));
 
 
-// Configuração do CORS (Permite requisições locais)
+// Configuração do CORS
 app.use(cors({
-    origin: ['http://localhost:3001', 'http://localhost:3000'], // Adicione outras origens se necessário
+    origin: ['http://localhost:3001', 'http://localhost:3000'], 
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Admin-Token']
 }));
 
-// Aumentar o limite de tamanho do corpo da requisição para Base64 (Imagens)
+// Aumentar o limite de tamanho do corpo da requisição
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
 // -----------------------------------------------------
-// 2. ENDPOINT DE UPLOAD DO APP ANDROID (API REST)
-// (Aceita 'folder' do Android)
+// 2. ENDPOINT DE UPLOAD DO APP ANDROID (Seu endpoint)
 // -----------------------------------------------------
 app.post('/api/captures/upload', async (req, res) => {
     try {
         const {
             nomeObra, pontoDeVista, descricao, criado_em,
             gps, orientacao, imageBase64,
-            folder // <-- 1. RECEBENDO O CAMPO 'folder' DO ANDROID
+            folder 
         } = req.body;
 
         if (!nomeObra) {
@@ -120,11 +120,11 @@ app.post('/api/captures/upload', async (req, res) => {
              return res.status(400).json({ success: false, message: "Campo 'folder' é obrigatório." });
         }
 
-        // Lógica para upload SEM imagem (se o Android enviar)
+        // Lógica para upload SEM imagem
         if (!imageBase64) {
             const newFolderEntry = new Image({
                 name: nomeObra,
-                folder: folder.toLowerCase().trim(), // Limpa o nome da pasta
+                folder: folder.toLowerCase().trim(), 
                 criado_em: new Date(criado_em || Date.now()),
                 nome_da_obra: nomeObra,
                 descricao: descricao || 'Projeto criado (sem imagem)',
@@ -138,32 +138,24 @@ app.post('/api/captures/upload', async (req, res) => {
         }
 
         // Lógica principal (Upload com Imagem Base64)
-        
-        // 1. Converte Base64 para Buffer binário
         const base64Data = imageBase64.replace(/^data:image\/\w+;base64,/, "");
         const imageBuffer = Buffer.from(base64Data, 'base64');
         
-        // 2. Cria o novo documento Mongoose
         const newCapture = new Image({
             name: nomeObra,
-            // 2. ⚠️ CORREÇÃO: Usa o 'folder' enviado pelo app (limpo)
             folder: folder.toLowerCase().trim(), 
             criado_em: new Date(criado_em || Date.now()),
-            
             nome_da_obra: nomeObra,
             ponto_de_vista: pontoDeVista,
             descricao: descricao,
-            
             img: {
                 data: imageBuffer,
                 contentType: 'image/jpeg' 
             },
-            
-            gps: gps || {}, // Fallback para objetos vazios
-            orientacao: orientacao || {} // Fallback para objetos vazios
+            gps: gps || {}, 
+            orientacao: orientacao || {} 
         });
 
-        // 3. Salva no MongoDB
         await newCapture.save();
         
         console.log(`Novo upload do Android salvo: ${nomeObra} (Pasta: ${folder})`);
@@ -182,68 +174,36 @@ app.post('/api/captures/upload', async (req, res) => {
 
 app.post("/login", async (req, res) => {
     try {
-        // 1. Recebe apenas email e cpf.
         const { email, cpf } = req.body; 
-
         if (!email || !cpf) {
             return res.status(400).json({ error: "Email e CPF são obrigatórios." });
         }
-
-        // 2. Busca usuário no banco
         let user = await User.findOne({ email });
-
         if (!user) {
             console.log("Tentativa de login com usuário não cadastrado:", email);
             return res.status(401).json({
                 error: "Usuário não cadastrado. Peça para um admin cadastrar."
             });
-            
-            // Se precisar da lógica de autocadastro de admin:
-            /*
-            if (adminLogin) { // <-- precisaria enviar 'adminLogin' do frontend
-                console.log('Criando novo usuário admin...');
-                const cpfHash = await bcrypt.hash(cpf, 10);
-                user = new User({ email, cpfHash, isAdmin: true, active: true });
-                await user.save();
-                console.log('Novo usuário admin criado com sucesso');
-            } else {
-                return res.status(401).json({
-                    error: "Usuário não cadastrado. Peça para um admin cadastrar."
-                });
-            }
-            */
         }
-
-        // 3. Verifica CPF
         const validCpf = await bcrypt.compare(cpf, user.cpfHash);
         if (!validCpf) {
             return res.status(401).json({ error: "CPF incorreto." });
         }
-
-        // 4. Verifica se está ativo
         if (!user.active) {
             return res.status(401).json({ error: "Usuário inativo. Contate o administrador." });
         }
-
-        // 5. REMOVIDO: Bloco de validação 'adminLogin' (Não precisamos mais)
-
-        // 6. Decide tipo de acesso
         const accessLevel = user.isAdmin ? "ADMIN" : "USUÁRIO";
         console.log(`Login bem-sucedido: ${email} (${accessLevel})`);
-
-        // 7. Retorna dados básicos (incluindo se é admin)
         return res.json({
             ok: true,
             email: user.email,
-            isAdmin: user.isAdmin // O frontend web usará isso para redirecionar
+            isAdmin: user.isAdmin 
         });
-
     } catch (err) {
         console.error("Erro no /login:", err);
         return res.status(500).json({ error: "Erro no servidor durante o login." });
     }
 });
-
 
 // Rotas Admin (Protegidas)
 console.log('Registering admin routes...');
@@ -364,7 +324,7 @@ app.post('/upload', upload.array('images', 20), async (req, res) => {
     try {
         const images = req.files.map(file => ({
             name: path.parse(file.originalname).name,
-            folder,
+            folder: folder.toLowerCase().trim(), // <-- Limpando o nome da pasta
             img: { data: file.buffer, contentType: file.mimetype }
         }));
 
@@ -387,48 +347,97 @@ app.delete('/delete/:id', async (req, res) => {
     }
 });
 
-import { spawn } from "child_process";
-
-// Rota de Inferência (Python)
+// --- ROTA DE INFERÊNCIA SUBSTITUÍDA ---
+// (Esta é a rota da Fase 4, modificada para se adequar ao seu server.js)
 app.post("/inference/:id", async (req, res) => {
     try {
         const imageId = req.params.id;
 
+        // 1. Busca a imagem E SEUS METADADOS (incluindo a 'folder')
         const image = await Image.findById(imageId);
         if (!image || !image.img || !image.img.data) {
-             return res.status(404).send("Imagem não encontrada ou sem dados binários");
+            return res.status(404).send("Imagem não encontrada ou sem dados binários");
         }
 
+        // --- 2. PEGAR A 'AREA' (ZONA) ---
+        // Puxa o 'folder' (ex: "plataforma") do registro do MongoDB
+        // e limpa (lowercase, trim)
+        const areaNome = image.folder ? image.folder.toLowerCase().trim() : null; 
+        
+        if (!areaNome) {
+            // Se a imagem não tem um 'folder', não podemos calcular o progresso
+            return res.status(400).json({ 
+                error: `Imagem ${imageId} não tem uma 'folder' (área) definida. Não é possível calcular o progresso.` 
+            });
+        }
+
+        // 3. Salva a imagem em um arquivo temporário (Sua lógica)
         const tempDir = path.join(__dirname, "temp");
         if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir, { recursive: true });
-
         const tempImagePath = path.join(tempDir, `${imageId}.jpg`);
         fs.writeFileSync(tempImagePath, image.img.data);
 
+        // 4. Prepara a pasta de saída (Sua lógica)
         const resultsDir = path.join(__dirname, "results", imageId);
         if (!fs.existsSync(resultsDir)) fs.mkdirSync(resultsDir, { recursive: true });
 
-        // Rodar script Python
+        // 5. Rodar script Python (MODIFICADO)
         const py = spawn("python", [
-          "inference_test.py",
-          "--model_path", "var_3plus_weights_30.pt",
-          "--image_path", tempImagePath,
-          "--output_dir", resultsDir,
-          "--channels", "4"
+            "inference_test.py", // O seu script que acabamos de modificar
+            "--model_path", "Var_2plus_weights_28.Pt", // <-- CORRIGIDO PARA O SEU MODELO
+            "--image_path", tempImagePath,
+            "--output_dir", resultsDir,
+            "--channels", "4",
+            "--area", areaNome // <-- 6. PASSANDO A 'AREA' PARA O PYTHON
         ]);
 
-        py.stdout.on("data", (data) => console.log(`PY: ${data}`));
-        py.stderr.on("data", (data) => console.error(`PY ERR: ${data}`));
+        // --- 7. CAPTURAR A SAÍDA (MODIFICADO) ---
+        let jsonData = '';
+        let pyError = '';
+
+        // O Python vai imprimir logs no stderr
+        py.stderr.on("data", (data) => {
+            console.error(`PY ERR: ${data}`); // Loga o erro
+            pyError += data.toString(); // Salva para o caso de falha
+        });
+        
+        // O Python vai imprimir o JSON de resultado no stdout
+        py.stdout.on("data", (data) => {
+            console.log(`PY: ${data}`); // Loga o sucesso
+            jsonData += data.toString();
+        });
 
         py.on("close", (code) => {
-            if (code === 0) {
-                res.json({
-                    status: "ok",
-                    original: `/results/${imageId}/original.png`,
-                    overlay: `/results/${imageId}/overlay.png`
-                });
+            // Limpa o arquivo temporário
+            fs.unlink(tempImagePath, (err) => { 
+                if (err) console.error("Erro ao limpar temp file:", err);
+            });
+
+            // Se o código for 0 E o jsonData (stdout) não estiver vazio
+            if (code === 0 && jsonData) {
+                try {
+                    // Tenta parsear o JSON de sucesso
+                    const resultadoFinal = JSON.parse(jsonData);
+                    
+                    if(resultadoFinal.error) {
+                         // Ocorreu um erro no Python (ex: "Nenhum material detectado")
+                         // mas ainda queremos retornar 200 OK com o overlay
+                         console.warn(`Aviso na inferência (mas overlay OK): ${resultadoFinal.error}`);
+                         res.json(resultadoFinal); // Envia o JSON com o erro e o overlay
+                    } else {
+                         // SUCESSO TOTAL!
+                         console.log(`Inferência para [${areaNome}] concluída. Progresso: ${resultadoFinal.porcentagem_geral}%`);
+                         res.json(resultadoFinal); // Envia o JSON com percentual
+                    }
+                    
+                } catch (e) {
+                    // Falha ao parsear o JSON de sucesso (improvável)
+                    console.error("Falha ao parsear stdout do Python:", e);
+                    res.status(500).json({ error: "Falha ao processar resposta da IA", details: jsonData });
+                }
             } else {
-                res.status(500).json({ status: "erro", msg: "Falha na inferência" });
+                // Falha crítica (código != 0 ou pyError)
+                res.status(500).json({ error: "Falha crítica na inferência Python", details: pyError });
             }
         });
 
@@ -437,6 +446,7 @@ app.post("/inference/:id", async (req, res) => {
         res.status(500).send("Erro no servidor");
     }
 });
+
 
 // Rota para listar pastas únicas (Web e Android)
 app.get('/api/folders', async (req, res) => {
@@ -464,6 +474,59 @@ app.get('/api/folders', async (req, res) => {
     }
 });
  
+
+// --- ROTA NOVA ADICIONADA (PARA O REACT LER O PROGRESSO) ---
+app.get('/api/progress/:area', (req, res) => {
+    const areaNome = req.params.area.toLowerCase(); // Ex: 'plataforma'
+    
+    const progressoPath = path.join(__dirname, `progresso_${areaNome}.json`);
+    const planoPath = path.join(__dirname, `plano_base_${areaNome}.json`);
+    
+    // Primeiro, verifica se o plano existe
+    if (!fs.existsSync(planoPath)) {
+        return res.status(404).json({ error: `Plano base 'plano_base_${areaNome}.json' não encontrado.`});
+    }
+
+    try {
+        // Se chegou aqui, o plano existe.
+        const planoData = fs.readFileSync(planoPath, 'utf8');
+        const plano = JSON.parse(planoData);
+        
+        let progresso = {};
+        let total_executado = 0;
+
+        // Agora, verifica se o progresso existe
+        if (fs.existsSync(progressoPath)) {
+             const progressoData = fs.readFileSync(progressoPath, 'utf8');
+             progresso = JSON.parse(progressoData);
+             total_executado = progresso.elementos_executados_geral || 0;
+        } else {
+            // Progresso não existe, então está 0%
+            progresso = { elementos_executados_geral: 0 };
+        }
+            
+        const total_planejado = plano.total_elementos_geral || 1; // Evita divisão por zero
+        const percentual_geral = (total_executado / total_planejado) * 100;
+
+        res.json({
+           area_inspecionada: areaNome,
+           porcentagem_geral: round(percentual_geral, 2),
+           total_executado: total_executado,
+           total_planejado: plano.total_elementos_geral || 0,
+           detalhes_executados: progresso,
+           detalhes_plano: plano
+        });
+
+    } catch (err) {
+         res.status(500).json({ error: 'Falha ao ler arquivos de progresso', details: err.message });
+    }
+});
+
+// --- FUNÇÃO HELPER ADICIONADA ---
+function round(value, decimals) {
+  return Number(Math.round(value + 'e' + decimals) + 'e-' + decimals);
+}
+
 
 // Servidor
 const port = process.env.PORT || 3000;
