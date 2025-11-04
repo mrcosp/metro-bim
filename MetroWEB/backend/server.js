@@ -10,6 +10,7 @@ import path, { dirname } from "path";
 import { fileURLToPath } from "url";
 import cors from 'cors';
 import fs from "fs"; 
+import { spawn } from "child_process"; // <-- IMPORT MOVIdO PARA CIMA
 
 dotenv.config();
 
@@ -42,7 +43,7 @@ app.set("views", __dirname);
 app.set("view engine", "ejs");
 
 // -----------------------------------------------------
-// 1. MONGODB SCHEMA (Atualizado para Android e Web)
+// 1. MONGODB SCHEMA (ATUALIZADO COM SNAPSHOT)
 // -----------------------------------------------------
 const imgSchema = new mongoose.Schema({
     // Campos da UI Web e Android
@@ -77,7 +78,12 @@ const imgSchema = new mongoose.Schema({
     // Campo 'criado_em' do Android (tipo Date)
     criado_em: Date,
     // Campo 'createdAt' padrão (tipo Date, gerenciado pelo Mongoose/DB)
-    createdAt: { type: Date, default: Date.now }
+    createdAt: { type: Date, default: Date.now },
+
+    // --- MUDANÇA (IA+BIM) ---
+    // Adiciona um campo para salvar o "snapshot" da porcentagem
+    // no momento em que a análise de IA foi rodada.
+    progress_snapshot: { type: Number, default: 0 }
 });
 
 const Image = mongoose.model("Image", imgSchema);
@@ -101,39 +107,45 @@ app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
 // -----------------------------------------------------
-// 2. ENDPOINT DE UPLOAD DO APP ANDROID (API REST)
-// (Aceita 'folder' do Android)
+// 2. ENDPOINT DE UPLOAD (ANDROID E WEB)
+//    (Sua lógica da "main", agora com automação de plano)
 // -----------------------------------------------------
 app.post('/api/captures/upload', async (req, res) => {
     try {
         const {
             nomeObra, pontoDeVista, descricao, criado_em,
             gps, orientacao, imageBase64,
-            folder 
+            folder,
+            ifcAreaName // <-- O novo campo de automação
         } = req.body;
 
-        // --- VALIDAÇÃO (Corrigida para Web/Android) ---
+        // --- VALIDAÇÃO (Sua lógica da "main") ---
         if (imageBase64) { // Se tem imagem (Android)
-            if (!nomeObra) {
-                return res.status(400).json({ success: false, message: "Upload de imagem (Android) requer 'nomeObra'." });
-            }
-            if (!folder) {
-                return res.status(400).json({ success: false, message: "Upload de imagem (Android) requer 'folder'." });
-            }
+            if (!nomeObra) return res.status(400).json({ success: false, message: "Upload (Android) requer 'nomeObra'." });
+            if (!folder) return res.status(400).json({ success: false, message: "Upload (Android) requer 'folder'." });
         } 
         else { // Se NÃO tem imagem (Web criando pasta)
-            if (!folder) {
-                 return res.status(400).json({ success: false, message: "Criação de pasta (Web) requer o campo 'folder'." });
-            }
+            if (!folder) return res.status(400).json({ success: false, message: "Criação de pasta (Web) requer 'folder'." });
+            if (!ifcAreaName) return res.status(400).json({ success: false, message: "Criação de pasta (Web) requer 'ifcAreaName'." }); // <-- Valida o novo campo
         }
         // --- FIM DA VALIDAÇÃO ---
 
 
         // Lógica para upload SEM imagem (Criação de pasta pela Web)
         if (!imageBase64) {
+            
+            const pastaLimpa = folder.toLowerCase().trim();
+            
+            // Verifica se a pasta já existe
+            const existing = await Image.findOne({ folder: pastaLimpa });
+            if (existing) {
+                console.log(`Pasta [${folder}] já existe.`);
+                return res.status(409).json({ success: false, message: "Essa pasta já existe." });
+            }
+
             const newFolderEntry = new Image({
                 name: nomeObra || folder, 
-                folder: folder.toLowerCase().trim(), 
+                folder: pastaLimpa, 
                 criado_em: new Date(criado_em || Date.now()),
                 nome_da_obra: nomeObra || folder,
                 descricao: descricao || 'Projeto criado (sem imagem)',
@@ -143,7 +155,30 @@ app.post('/api/captures/upload', async (req, res) => {
 
             await newFolderEntry.save();
             console.log(`📁 Novo registro (sem imagem) criado: ${folder}`);
-            return res.json({ success: true, message: "Registro (sem imagem) criado." });
+            
+            // --- GERAÇÃO AUTOMÁTICA DO PLANO ---
+            console.log(`Gerando plano base para: ${pastaLimpa} (IFC: ${ifcAreaName})`);
+            
+            const py = spawn("python", [
+                "process_ifc.py", 
+                "--folder", pastaLimpa,
+                "--ifc_name", ifcAreaName
+            ]);
+            
+            let pyError = '';
+            py.stderr.on("data", (data) => { pyError += data.toString(); });
+            py.stdout.on("data", (data) => { console.log(`PY (process_ifc): ${data}`); });
+
+            py.on("close", (code) => {
+                if (code !== 0) {
+                    console.error(`❌ FALHA ao gerar plano base para ${pastaLimpa}: ${pyError}`);
+                } else {
+                    console.log(`✅ Plano base para '${pastaLimpa}' gerado com sucesso.`);
+                }
+            });
+            // --- FIM DA GERAÇÃO DO PLANO ---
+
+            return res.status(201).json({ success: true, message: "Registro (sem imagem) criado." });
         }
 
         // Lógica principal (Upload com Imagem Base64 do Android)
@@ -182,7 +217,7 @@ app.post('/api/captures/upload', async (req, res) => {
 // ROTAS EXISTENTES (WEB)
 // -----------------------------------------------------
 
-// LOGIN (LÓGICA CORRIGIDA - Não exige mais 'adminLogin' do frontend)
+// LOGIN (Sua lógica da "main" - INTACTA)
 app.post("/login", async (req, res) => {
     try {
         const { email, cpf } = req.body; 
@@ -229,7 +264,7 @@ app.post("/login", async (req, res) => {
 });
 
 
-// Rotas Admin (Protegidas)
+// Rotas Admin (Sua lógica da "main" - INTACTA)
 console.log('Registering admin routes...');
 app.get('/admin/tbusuario', adminAuth, async (req, res) => {
     try {
@@ -301,10 +336,17 @@ app.get('/', async (req, res) => {
     res.render('index', { folders });
 });
 
-// Listar imagens de uma pasta (JSON para Web)
+// --- ROTA /folder/:folderName (ATUALIZADA) ---
+// (Agora envia o 'progress_snapshot')
 app.get('/folder/:folderName', async (req, res) => {
     try {
-        const images = await Image.find({ folder: req.params.folderName });
+        // --- CORREÇÃO AQUI ---
+        // Adiciona um filtro para pegar apenas documentos que TENHAM dados de imagem.
+        const images = await Image.find({ 
+            folder: req.params.folderName,
+            'img.data': { $exists: true, $ne: null } 
+        });
+        // --- FIM DA CORREÇÃO ---
 
         const formatted = images.map(img => ({
             id: img._id,
@@ -314,7 +356,10 @@ app.get('/folder/:folderName', async (req, res) => {
             contentType: img.img?.contentType, 
             base64: img.img?.data
                 ? `data:${img.img.contentType};base64,${img.img.data.toString('base64')}`
-                : null
+                : null,
+            // --- MUDANÇA (IA+BIM) ---
+            // Envia o snapshot de progresso individual da imagem
+            progress_snapshot: img.progress_snapshot || 0 
         }));
 
         res.json(formatted);
@@ -339,12 +384,14 @@ app.get('/image/:id', async (req, res) => {
 });
 
 // -------------------------------------------------------------------
-// ⚠️ ROTA WEB ANTIGA (CORRIGIDA PARA REACT) ⚠️
+// ROTA WEB (Sua lógica da "main", agora automatizada)
 // -------------------------------------------------------------------
-// Upload único ou múltiplo (Rota Antiga do Web via Multer)
 app.post('/upload', upload.array('images', 20), async (req, res) => {
     let folder = req.body.folder; // pasta escolhida
     if (!folder) folder = req.body.newFolder; // criar nova pasta
+    
+    // O nome técnico do IFC (do novo campo do formulário)
+    let ifcAreaName = req.body.ifcAreaName; 
 
     // Validação
     if (!folder && (!req.files || req.files.length === 0)) {
@@ -352,19 +399,24 @@ app.post('/upload', upload.array('images', 20), async (req, res) => {
     }
 
     try {
-        // --- CORREÇÃO: LÓGICA PARA CRIAR PASTA VAZIA (Web/React) ---
+        const pastaLimpa = folder.toLowerCase().trim();
+
+        // --- LÓGICA PARA CRIAR PASTA VAZIA (Sua lógica da "main") ---
         if ((!req.files || req.files.length === 0) && folder) {
             
-            const existing = await Image.findOne({ folder: folder.toLowerCase().trim() });
+            // (Nós validamos ifcAreaName na rota /api/captures/upload,
+            // mas esta rota /upload pode ser chamada por UIs antigas.
+            // Vamos apenas logar se ele não vier.)
+            
+            const existing = await Image.findOne({ folder: pastaLimpa });
             if (existing) {
                 console.log(`Pasta [${folder}] já existe.`);
-                // Retorna erro 409 (Conflito) em JSON
                 return res.status(409).json({ success: false, message: "Essa pasta já existe." });
             }
 
             const newFolderEntry = new Image({
-                name: folder, // Usa o nome da pasta como nome
-                folder: folder.toLowerCase().trim(),
+                name: folder, 
+                folder: pastaLimpa,
                 criado_em: new Date(),
                 nome_da_obra: folder,
                 descricao: 'Projeto criado via web'
@@ -372,25 +424,46 @@ app.post('/upload', upload.array('images', 20), async (req, res) => {
             await newFolderEntry.save();
             console.log(`📁 Nova pasta (web) criada: ${folder}`);
             
-            // ⚠️ MUDANÇA CRÍTICA: Retorna JSON (201 Created) em vez de redirect
+            // --- GERAÇÃO AUTOMÁTICA DO PLANO (Se ifcAreaName foi enviado) ---
+            if (ifcAreaName) {
+                console.log(`Gerando plano base para: ${pastaLimpa} (IFC: ${ifcAreaName})`);
+                
+                const py = spawn("python", [
+                    "process_ifc.py",
+                    "--folder", pastaLimpa,
+                    "--ifc_name", ifcAreaName
+                ]);
+                
+                let pyError = '';
+                py.stderr.on("data", (data) => { pyError += data.toString(); });
+                py.stdout.on("data", (data) => { console.log(`PY (process_ifc): ${data}`); });
+
+                py.on("close", (code) => {
+                    if (code !== 0) {
+                        console.error(`❌ FALHA ao gerar plano base para ${pastaLimpa}: ${pyError}`);
+                    } else {
+                        console.log(`✅ Plano base para '${pastaLimpa}' gerado com sucesso.`);
+                    }
+                });
+            }
+            // --- FIM DA GERAÇÃO DO PLANO ---
+            
             return res.status(201).json({ success: true, message: "Pasta criada com sucesso." });
         }
 
-        // --- LÓGICA ANTIGA (Se houver arquivos) ---
+        // --- LÓGICA DE UPLOAD DE ARQUIVOS (Sua lógica) ---
         const images = req.files.map(file => ({
             name: path.parse(file.originalname).name,
-            folder: folder.toLowerCase().trim(), // Limpa o nome da pasta
+            folder: pastaLimpa,
             img: { data: file.buffer, contentType: file.mimetype }
         }));
 
         await Image.insertMany(images);
         
-        // ⚠️ MUDANÇA CRÍTICA: Retorna JSON (201 Created) em vez de redirect
         return res.status(201).json({ success: true, message: "Imagens salvas com sucesso." });
 
     } catch (err) {
         console.log("Erro no /upload:", err);
-        // Retorna Erro 500 em JSON
         return res.status(500).json({ success: false, message: "Erro ao salvar dados" });
     }
 });
@@ -406,48 +479,95 @@ app.delete('/delete/:id', async (req, res) => {
     }
 });
 
-import { spawn } from "child_process";
-
-// Rota de Inferência (Python)
-app.post("/inference/:id", async (req, res) => { // (Corrigido para POST)
+// --- ROTA DE INFERÊNCIA (MODIFICADA PARA IA+BIM) ---
+app.post("/inference/:id", async (req, res) => {
     try {
         const imageId = req.params.id;
 
+        // 1. Busca a imagem E SEUS METADADOS
         const image = await Image.findById(imageId);
         if (!image || !image.img || !image.img.data) {
-             return res.status(404).send("Imagem não encontrada ou sem dados binários");
+            return res.status(404).send("Imagem não encontrada ou sem dados binários");
         }
 
+        // 2. PEGAR A 'AREA' (ZONA)
+        const areaNome = image.folder ? image.folder.toLowerCase().trim() : null; 
+        if (!areaNome) {
+            return res.status(400).json({ 
+                error: `Imagem ${imageId} não tem uma 'folder' (área) definida.` 
+            });
+        }
+
+        // 3. Salva a imagem em um arquivo temporário
         const tempDir = path.join(__dirname, "temp");
         if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir, { recursive: true });
-
         const tempImagePath = path.join(tempDir, `${imageId}.jpg`);
         fs.writeFileSync(tempImagePath, image.img.data);
 
+        // 4. Prepara a pasta de saída
         const resultsDir = path.join(__dirname, "results", imageId);
         if (!fs.existsSync(resultsDir)) fs.mkdirSync(resultsDir, { recursive: true });
 
-        // Rodar script Python
+        // 5. Rodar script Python
         const py = spawn("python", [
-            "inference_test.py",
-            "--model_path", "var_3plus_weights_30.pt",
+            "inference_test.py", 
+            "--model_path", "Var_2plus_weights_28.Pt", // <-- Seu modelo
             "--image_path", tempImagePath,
             "--output_dir", resultsDir,
-            "--channels", "4"
+            "--channels", "4",
+            "--area", areaNome // <-- PASSANDO A 'AREA'
         ]);
 
-        py.stdout.on("data", (data) => console.log(`PY: ${data}`));
-        py.stderr.on("data", (data) => console.error(`PY ERR: ${data}`));
+        // 6. CAPTURAR A SAÍDA
+        let jsonData = '';
+        let pyError = '';
 
-        py.on("close", (code) => {
-            if (code === 0) {
-                res.json({
-                    status: "ok",
-                    original: `/results/${imageId}/original.png`,
-                    overlay: `/results/${imageId}/overlay.png`
-                });
+        py.stderr.on("data", (data) => {
+            console.error(`PY ERR: ${data}`); 
+            pyError += data.toString(); 
+        });
+        
+        py.stdout.on("data", (data) => {
+            console.log(`PY: ${data}`); 
+            jsonData += data.toString();
+        });
+
+        py.on("close", async (code) => { // <-- Adicionado 'async'
+            // Limpa o arquivo temporário
+            fs.unlink(tempImagePath, (err) => { 
+                if (err) console.error("Erro ao limpar temp file:", err);
+            });
+
+            if (code === 0 && jsonData) {
+                try {
+                    const resultadoFinal = JSON.parse(jsonData);
+                    
+                    if(resultadoFinal.error) {
+                         console.warn(`Aviso na inferência (mas overlay OK): ${resultadoFinal.error}`);
+                         res.json(resultadoFinal); 
+                    } else {
+                         console.log(`Inferência para [${areaNome}] concluída. Progresso: ${resultadoFinal.porcentagem_geral}%`);
+                         
+                        // --- MUDANÇA (IA+BIM) ---
+                        // Salva o snapshot da porcentagem na imagem
+                        try {
+                           await Image.findByIdAndUpdate(imageId, { 
+                               progress_snapshot: resultadoFinal.porcentagem_geral 
+                           });
+                           console.log(`✅ Snapshot de progresso (${resultadoFinal.porcentagem_geral}%) salvo na Imagem ${imageId}`);
+                        } catch (dbErr) {
+                           console.error(`❌ Erro ao salvar snapshot no MongoDB: ${dbErr}`);
+                        }
+                         
+                         res.json(resultadoFinal); // Envia o JSON com percentual
+                    }
+                    
+                } catch (e) {
+                    console.error("Falha ao parsear stdout do Python:", e);
+                    res.status(500).json({ error: "Falha ao processar resposta da IA", details: jsonData });
+                }
             } else {
-                res.status(500).json({ status: "erro", msg: "Falha na inferência" });
+                res.status(500).json({ error: "Falha crítica na inferência Python", details: pyError });
             }
         });
 
@@ -483,6 +603,97 @@ app.get('/api/folders', async (req, res) => {
     }
 });
  
+
+// --- ROTA NOVA ADICIONADA (PARA LER AS ÁREAS DO IFC) ---
+app.get('/api/ifc/areas', (req, res) => {
+    
+    const py = spawn("python", ["get_ifc_areas.py"]);
+
+    let jsonData = '';
+    let pyError = '';
+
+    py.stdout.on("data", (data) => {
+        jsonData += data.toString();
+    });
+
+    py.stderr.on("data", (data) => {
+        pyError += data.toString();
+    });
+
+    py.on("close", (code) => {
+        if (code !== 0 || pyError) {
+            console.error(`PY ERR (get_ifc_areas): ${pyError}`);
+            try {
+                 const errorObj = JSON.parse(pyError);
+                 return res.status(500).json(errorObj);
+            } catch (e) {
+                 return res.status(500).json({ error: 'Erro desconhecido no script get_ifc_areas', details: pyError });
+            }
+        }
+        
+        try {
+            // Sucesso! Retorna a lista de áreas
+            res.json(JSON.parse(jsonData));
+        } catch (e) {
+            console.error("Falha ao parsear stdout do get_ifc_areas:", e);
+            res.status(500).json({ error: "Falha ao processar resposta do script de áreas" });
+        }
+    });
+});
+
+
+// --- ROTA NOVA ADICIONADA (PARA O REACT LER O PROGRESSO GERAL) ---
+app.get('/api/progress/:area', (req, res) => {
+    const areaNome = req.params.area.toLowerCase(); // Ex: 'plataforma'
+    
+    const progressoPath = path.join(__dirname, `progresso_${areaNome}.json`);
+    const planoPath = path.join(__dirname, `plano_base_${areaNome}.json`);
+    
+    // Primeiro, verifica se o plano existe
+    if (!fs.existsSync(planoPath)) {
+        return res.status(404).json({ error: `Plano base 'plano_base_${areaNome}.json' não encontrado.`});
+    }
+
+    try {
+        // Se chegou aqui, o plano existe.
+        const planoData = fs.readFileSync(planoPath, 'utf8');
+        const plano = JSON.parse(planoData);
+        
+        let progresso = {};
+        let total_executado = 0;
+
+        // Agora, verifica se o progresso existe
+        if (fs.existsSync(progressoPath)) {
+             const progressoData = fs.readFileSync(progressoPath, 'utf8');
+             progresso = JSON.parse(progressoData);
+             total_executado = progresso.elementos_executados_geral || 0;
+        } else {
+            // Progresso não existe, então está 0%
+            progresso = { elementos_executados_geral: 0 };
+        }
+            
+        const total_planejado = plano.total_elementos_geral || 1; // Evita divisão por zero
+        const percentual_geral = (total_executado / total_planejado) * 100;
+
+        res.json({
+           area_inspecionada: areaNome,
+           porcentagem_geral: round(percentual_geral, 2),
+           total_executado: total_executado,
+           total_planejado: plano.total_elementos_geral || 0,
+           detalhes_executados: progresso,
+           detalhes_plano: plano
+        });
+
+    } catch (err) {
+         res.status(500).json({ error: 'Falha ao ler arquivos de progresso', details: err.message });
+    }
+});
+
+// --- FUNÇÃO HELPER ADICIONADA ---
+function round(value, decimals) {
+  return Number(Math.round(value + 'e' + decimals) + 'e-' + decimals);
+}
+
 
 // Servidor
 const port = process.env.PORT || 3000;
