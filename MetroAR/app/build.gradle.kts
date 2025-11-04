@@ -7,6 +7,9 @@ repositories {
     google()
     mavenCentral()
     maven { url = uri("https://jitpack.io") }
+
+    maven { url = uri("https://github.com/SceneView/maven-repo/raw/main/") }
+    maven { url = uri("https://raw.githubusercontent.com/SceneView/maven-repo/main/") }
 }
 
 android {
@@ -94,11 +97,10 @@ dependencies {
     // DESUGARING (Permanece)
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.0.4")
 
-    // ARCore e SceneView (versões estáveis e compatíveis)
-    implementation("com.google.ar:core:1.51.0")
-    implementation("io.github.sceneview:arsceneview:2.2.2")
+    // ARSceneview for augmented reality capabilities
+    implementation("io.github.sceneview:arsceneview:0.10.0")
 
-    // REMOVIDO: implementacao do mongodb-driver-sync
+// REMOVIDO: implementacao do mongodb-driver-sync
     // REMOVIDO: implementacao do org.mongodb:bson
 
     // --- TESTES ---

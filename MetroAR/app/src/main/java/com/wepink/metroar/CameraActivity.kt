@@ -56,14 +56,7 @@ import java.util.Date
 import java.util.Locale
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
-// -------------------------------------------------------------------
-import io.github.sceneview.ar.ARSceneView
-import io.github.sceneview.ar.arcore.createAnchor
-import io.github.sceneview.ar.node.ArModelNode
-import io.github.sceneview.ar.node.PlaneRenderer
-import io.github.sceneview.math.Position
-import io.github.sceneview.math.Rotation
-import io.github.sceneview.utils.setVisible
+import android.content.Intent
 
 // -------------------------------------------------------------------
 // MODELOS DE DADOS (Não alterados)
@@ -115,8 +108,8 @@ class CameraActivity : AppCompatActivity(), SensorEventListener {
     private val orientationAngles = FloatArray(3)
     private lateinit var arButton: ImageButton
     private var isARModeEnabled = false
-    private var arFragment: ArFragment? = null
-    private var isARVisible = false
+
+
 
     // Diretório de saída local para imagens
     private val outputDirectory: File by lazy {
@@ -136,9 +129,48 @@ class CameraActivity : AppCompatActivity(), SensorEventListener {
         captureButton = findViewById(R.id.btnCapture)
         arButton = findViewById(R.id.btnAR)
         arButton.setOnClickListener {
-            toggleARMode()
+            val intent = Intent(this, ARActivity::class.java)
+            startActivity(intent)
         }
+
+        val homeButton = findViewById<ImageButton>(R.id.btnHome)
+        homeButton.setOnClickListener {
+            val intent = Intent(this, HomeActivity::class.java)
+            startActivity(intent)
+            finish()
+        }
+
         cameraExecutor = Executors.newSingleThreadExecutor()
+
+        // Botão Flash (ligar/desligar lanterna)
+        val flashButton = findViewById<ImageButton>(R.id.btnFlash)
+        var isFlashOn = false
+
+        flashButton.setOnClickListener {
+            val cameraProvider = cameraProviderFuture.get()
+            val camera = cameraProvider.bindToLifecycle(
+                this,
+                CameraSelector.DEFAULT_BACK_CAMERA,
+                imageCapture
+            )
+
+            val cameraControl = camera.cameraControl
+            if (!isFlashOn) {
+                cameraControl.enableTorch(true)
+                isFlashOn = true
+                flashButton.setImageResource(R.drawable.ic_flash_on)
+            } else {
+                cameraControl.enableTorch(false)
+                isFlashOn = false
+                flashButton.setImageResource(R.drawable.ic_flash_off)
+            }
+        }
+
+        val galleryButton = findViewById<ImageButton>(R.id.btnGallery)
+        galleryButton.setOnClickListener {
+            val intent = Intent(this, GaleriaActivity::class.java)
+            startActivity(intent)
+        }
 
         setupFolderAdapter() // Prepara o adapter para o pop-up
         cameraExecutor = Executors.newSingleThreadExecutor()
@@ -193,61 +225,6 @@ class CameraActivity : AppCompatActivity(), SensorEventListener {
             override fun onLocationResult(locationResult: LocationResult) {
                 currentLocation = locationResult.lastLocation
             }
-        }
-    }
-
-    private fun toggleARMode() {
-        isARModeEnabled = !isARModeEnabled
-        val arFragmentView = findViewById<View>(R.id.arFragment)
-        val buttons = listOf(
-            findViewById<ImageButton>(R.id.btnFlash),
-            findViewById<ImageButton>(R.id.btnClose),
-            findViewById<ImageButton>(R.id.btnCapture),
-            findViewById<ImageButton>(R.id.btnHome),
-            findViewById<ImageButton>(R.id.btnGallery)
-        )
-
-        if (isARModeEnabled) {
-            buttons.forEach { it.animate().alpha(0f).setDuration(300).withEndAction {
-                it.visibility = View.GONE
-            }.start() }
-
-            arFragmentView.visibility = View.VISIBLE
-            arButton.setColorFilter(ContextCompat.getColor(this, android.R.color.holo_green_light))
-            initAR() // inicializa o modo AR
-        } else {
-            buttons.forEach {
-                it.visibility = View.VISIBLE
-                it.alpha = 0f
-                it.animate().alpha(1f).setDuration(300).start()
-            }
-
-            arFragmentView.visibility = View.GONE
-            arButton.setColorFilter(ContextCompat.getColor(this, android.R.color.holo_red_dark))
-        }
-    }
-
-    private fun initAR() {
-        try {
-            val arSceneView = findViewById<ARSceneView>(R.id.arSceneView)
-            arSceneView.planeRenderer.isVisible = true
-
-            arSceneView.setOnTapArPlaneListener { hitResult, _, _ ->
-                val anchor = hitResult.createAnchor(arSceneView.session ?: return@setOnTapArPlaneListener)
-                val cubeNode = ArModelNode(arSceneView.engine, anchor).apply {
-                    setModel(
-                        modelFileLocation = "models/cube.glb",
-                        scaleToUnits = 0.1f,
-                        centerOrigin = Position(0.0f, 0.05f, 0.0f)
-                    )
-                }
-                arSceneView.addChild(cubeNode)
-            }
-
-            Toast.makeText(this, "Modo AR ativo — toque para adicionar o cubo!", Toast.LENGTH_LONG).show()
-        } catch (e: Exception) {
-            Log.e(TAG, "Erro ao iniciar AR", e)
-            Toast.makeText(this, "Falha ao inicializar AR: ${e.message}", Toast.LENGTH_LONG).show()
         }
     }
 

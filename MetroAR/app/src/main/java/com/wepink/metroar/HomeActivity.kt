@@ -34,9 +34,5 @@ class HomeActivity : AppCompatActivity() {
             startActivity(intent)
         }
 
-        val btnAR = findViewById<LinearLayout>(R.id.btnAR)
-        btnAR.setOnClickListener {
-            startActivity(Intent(this, ARActivity::class.java))
-        }
     }
 }

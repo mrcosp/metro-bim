@@ -41,10 +41,7 @@
             android:name="com.google.ar.core"
             android:value="required"
             tools:replace="android:value" />
-        <activity
-            android:name=".ARActivity"
-            android:exported="false"
-            android:theme="@style/Theme.MetroAR" />
+        <activity android:name=".ARActivity" android:exported="false" />
     </application>
 
 </manifest>

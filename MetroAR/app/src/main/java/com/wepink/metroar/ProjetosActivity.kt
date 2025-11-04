@@ -1,10 +1,27 @@
 package com.wepink.metroar
 
+import android.content.Intent
 import android.os.Bundle
+import android.util.Log
+import android.view.Gravity
 import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
+import androidx.gridlayout.widget.GridLayout
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import retrofit2.Response
+import retrofit2.Retrofit
+import retrofit2.converter.gson.GsonConverterFactory
+import retrofit2.http.GET
+import com.wepink.metroar.ApiService
+import com.wepink.metroar.FolderResponse
 
 class ProjetosActivity : AppCompatActivity() {
+
+    private lateinit var gridProjects: GridLayout
+    private lateinit var apiService: ApiService
+    private val BASE_URL = "http://192.168.15.81:3000/" // usa o mesmo IP do servidor da câmera
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -13,51 +30,94 @@ class ProjetosActivity : AppCompatActivity() {
         val btnAddProject = findViewById<ImageButton>(R.id.btnAddProject)
         val btnHome = findViewById<ImageButton>(R.id.btnHome)
         val btnGallery = findViewById<ImageButton>(R.id.btnGallery)
+        gridProjects = findViewById(R.id.gridProjects)
 
+        // Inicializa Retrofit
+        val retrofit = Retrofit.Builder()
+            .baseUrl(BASE_URL)
+            .addConverterFactory(GsonConverterFactory.create())
+            .build()
+        apiService = retrofit.create(ApiService::class.java)
+
+        // Botões inferiores
+        btnHome.setOnClickListener {
+            finish()
+        }
+        btnGallery.setOnClickListener {
+            val intent = Intent(this, GaleriaActivity::class.java)
+            startActivity(intent)
+        }
+
+        // Adicionar novo projeto (pasta)
         btnAddProject.setOnClickListener {
-            // Infla o layout do diálogo
-            val dialogView = layoutInflater.inflate(R.layout.dialog_add_project, null)
+            Toast.makeText(this, "Função criar pasta em breve!", Toast.LENGTH_SHORT).show()
+        }
 
-            // Cria o diálogo
-            val dialog = android.app.AlertDialog.Builder(this)
-                .setView(dialogView)
-                .setCancelable(false)
-                .create()
+        // Carrega as pastas do servidor
+        fetchAndDisplayFolders()
+    }
 
-            dialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
-            dialog.show()
-
-            // Referências dos elementos DENTRO do layout inflado (dialog_add_project.xml)
-            val btnClose = dialogView.findViewById<ImageButton>(R.id.btnCloseDialog)
-            val btnCreate = dialogView.findViewById<Button>(R.id.btnCreateProject)
-            val nameInput = dialogView.findViewById<EditText>(R.id.inputDialogName)
-            val dateInput = dialogView.findViewById<EditText>(R.id.inputDialogDate)
-
-            // Fechar o diálogo
-            btnClose.setOnClickListener {
-                dialog.dismiss()
-            }
-
-            // Criar projeto
-            btnCreate.setOnClickListener {
-                val nome = nameInput.text.toString()
-                val data = dateInput.text.toString()
-
-                if (nome.isNotEmpty() && data.isNotEmpty()) {
-                    Toast.makeText(this, "Projeto '$nome' criado em $data!", Toast.LENGTH_SHORT).show()
-                    dialog.dismiss()
+    private fun fetchAndDisplayFolders() {
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                val response = apiService.getFolders()
+                if (response.isSuccessful && response.body() != null) {
+                    val folders = response.body()!!
+                    runOnUiThread {
+                        renderFolders(folders)
+                    }
                 } else {
-                    Toast.makeText(this, "Preencha todos os campos!", Toast.LENGTH_SHORT).show()
+                    Log.e("ProjetosActivity", "Erro: ${response.code()}")
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+                runOnUiThread {
+                    Toast.makeText(this@ProjetosActivity, "Falha ao conectar ao servidor.", Toast.LENGTH_LONG).show()
                 }
             }
         }
+    }
 
-        btnHome.setOnClickListener {
-            finish() // volta pra tela anterior
-        }
+    private fun renderFolders(folders: List<FolderResponse>) {
+        gridProjects.removeAllViews()
 
-        btnGallery.setOnClickListener {
-            Toast.makeText(this, "Abrir galeria", Toast.LENGTH_SHORT).show()
+        for (folder in folders) {
+            val layout = LinearLayout(this).apply {
+                orientation = LinearLayout.VERTICAL
+                gravity = Gravity.CENTER_HORIZONTAL
+                setPadding(16, 16, 16, 16)
+            }
+
+            val imageView = ImageView(this).apply {
+                setImageResource(R.drawable.ic_folder)
+                layoutParams = LinearLayout.LayoutParams(120, 120)
+            }
+
+            val nameText = TextView(this).apply {
+                text = "Nome: ${folder.name}"
+                setTextColor(resources.getColor(android.R.color.white))
+                textSize = 13f
+                setPadding(0, 8, 0, 0)
+            }
+
+            val dateText = TextView(this).apply {
+                text = "Data: ${folder.date}"
+                setTextColor(resources.getColor(android.R.color.darker_gray))
+                textSize = 12f
+            }
+
+            layout.addView(imageView)
+            layout.addView(nameText)
+            layout.addView(dateText)
+
+            layout.setOnClickListener {
+                // Abre a galeria específica da pasta
+                val intent = Intent(this, GaleriaActivity::class.java)
+                intent.putExtra("folderName", folder.name)
+                startActivity(intent)
+            }
+
+            gridProjects.addView(layout)
         }
     }
 }
