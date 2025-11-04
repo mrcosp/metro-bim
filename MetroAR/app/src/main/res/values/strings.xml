@@ -12,4 +12,16 @@
     <string name="welcome_subtitle">Escolha uma opção para começar</string>
     <string name="button_projects">Projetos</string>
     <string name="button_gallery">Galeria</string>
+    <string name="nome_da_obra">Nome da Obra</string>
+    <string name="ponto_de_vista">Ponto de Vista</string>
+    <string name="descricao">Descrição</string>
+    <string name="selecionar_pasta_existente">Selecionar pasta existente</string>
+    <string name="criar_nova_pasta">Criar nova pasta</string>
+    <string name="selecionar_pasta">Selecionar Pasta</string>
+    <string name="flash">Flash</string>
+    <string name="close">Fechar</string>
+    <string name="capture">Capturar</string>
+    <string name="home">Início</string>
+    <string name="gallery">Galeria</string>
+    <string name="ar_mode">AR Mode</string>
 </resources>

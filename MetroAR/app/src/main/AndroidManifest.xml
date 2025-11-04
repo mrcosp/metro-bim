@@ -1,20 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:tools="http://schemas.android.com/tools"
-    package="com.wepink.metroar">
+    xmlns:tools="http://schemas.android.com/tools">
 
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.INTERNET" />
-
-    <uses-feature android:name="android.hardware.camera.any" />
-    <uses-feature
-        android:name="android.hardware.camera"
-        android:required="true" />
-    <uses-feature
-        android:name="android.hardware.location.gps"
-        android:required="false" />
+    <uses-feature android:name="android.hardware.camera.ar" android:required="false" />
+    <uses-feature android:name="android.hardware.camera" android:required="true" />
+    <uses-feature android:name="android.hardware.location.gps" android:required="false" />
     <application
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
@@ -37,15 +31,20 @@
         </activity>
 
         <activity
-            android:name=".MainActivity"
-            android:exported="true" />
-
-        <activity
             android:name=".HomeActivity"
             android:exported="true"
             android:theme="@style/Theme.MetroAR" />
         <activity android:name=".ProjetosActivity" />
         <activity android:name=".GaleriaActivity" />
+        <activity android:name=".CameraActivity" />
+        <meta-data
+            android:name="com.google.ar.core"
+            android:value="required"
+            tools:replace="android:value" />
+        <activity
+            android:name=".ARActivity"
+            android:exported="false"
+            android:theme="@style/Theme.MetroAR" />
     </application>
 
 </manifest>

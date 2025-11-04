@@ -3,9 +3,19 @@ plugins {
     alias(libs.plugins.kotlin.android)
 }
 
+repositories {
+    google()
+    mavenCentral()
+    maven { url = uri("https://jitpack.io") }
+}
+
 android {
     namespace = "com.wepink.metroar"
     compileSdk = 36
+
+    buildFeatures {
+        viewBinding = true
+    }
 
     defaultConfig {
         applicationId = "com.wepink.metroar"
@@ -26,6 +36,8 @@ android {
             )
         }
     }
+
+
 
     packaging {
         resources {
@@ -81,6 +93,10 @@ dependencies {
 
     // DESUGARING (Permanece)
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.0.4")
+
+    // ARCore e SceneView (versões estáveis e compatíveis)
+    implementation("com.google.ar:core:1.51.0")
+    implementation("io.github.sceneview:arsceneview:2.2.2")
 
     // REMOVIDO: implementacao do mongodb-driver-sync
     // REMOVIDO: implementacao do org.mongodb:bson
