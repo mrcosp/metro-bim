@@ -184,7 +184,7 @@ function ConstructionHistory({ projectName, onBack }) {
             
             setImages(prevImages => prevImages.map(img => 
                 img.id === currentImage.id 
-                ? { ...img, progress_snapshot: result.porcentagem_geral } 
+                ? { ...img, progress_snapshot: result.porcentagem_imagem } 
                 : img
             ));
         }

@@ -14,23 +14,12 @@ from network._deeplab import DeepLabV3
 
 # --- 1. CONFIGURAÇÕES DE PROGRESSO ---
 MAPEAMENTO_ID_NOME = {
-    1: 'total_concreto',     # ASSUMINDO 1 = VERMELHO
-    2: 'total_metal',        # ASSUMINDO 2 = VERDE
-    3: 'total_deck_metalico' # ASSUMINDO 3 = AZUL
+    1: 'total_concreto',      # ASSUMINDO 1 = VERMELHO
+    2: 'total_metal',         # ASSUMINDO 2 = VERDE
+    3: 'total_deck_metalico'  # ASSUMINDO 3 = AZUL
 }
 
-# --- 2. FUNÇÕES DE CONTAGEM (Instâncias e Pixels) ---
-def contar_instancias(prediction_map):
-    """(LÓGICA ANTIGA) Conta quantos 'contornos' (objetos) de cada classe existem."""
-    contagem_real = {}
-    for class_id, class_name in MAPEAMENTO_ID_NOME.items():
-        mask = (prediction_map == class_id).astype(np.uint8)
-        contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-        num_instancias = len(contours)
-        if num_instancias > 0:
-            contagem_real[class_name] = num_instancias
-    return contagem_real
-
+# --- 2. FUNÇÕES DE CONTAGEM (Pixels) ---
 def contar_area_pixels(prediction_map):
     """(NOVA LÓGICA) Conta quantos 'pixels' de cada classe existem."""
     contagem_real_pixels = {}
@@ -48,7 +37,7 @@ def contar_area_pixels(prediction_map):
     return contagem_real_pixels
 # -------------------------------------------------------------------
 
-# --- 3. FUNÇÃO DE ATUALIZAR PROGRESSO (Com lógica MAX e bug corrigido) ---
+# --- 3. FUNÇÃO DE ATUALIZAR PROGRESSO (COM A MUDANÇA) ---
 def atualizar_progresso(area_nome_base, nova_contagem_ia):
     base_dir = os.path.dirname(os.path.abspath(__file__))
     
@@ -64,6 +53,19 @@ def atualizar_progresso(area_nome_base, nova_contagem_ia):
     with open(ARQUIVO_PLANO, 'r', encoding='utf-8') as f:
         plano_base = json.load(f)
 
+    # --- INÍCIO DA MUDANÇA (PYTHON) ---
+    # Precisamos do total planejado AQUI para calcular o % da imagem
+    total_planejado_geral = plano_base.get('total_elementos_geral', 1) 
+    if total_planejado_geral == 0: total_planejado_geral = 1 
+    
+    # Calcula o total de pixels brutos detectados NESTA IMAGEM
+    # (Usamos .values() da contagem que a IA acabou de fazer)
+    total_pixels_desta_imagem = sum(nova_contagem_ia.values())
+    
+    # Calcula o percentual APENAS desta imagem
+    percentual_da_imagem = (total_pixels_desta_imagem / total_planejado_geral) * 100
+    # --- FIM DA MUDANÇA (PYTHON) ---
+
     # 2. Carregar Progresso Atual (ou criar novo)
     progresso_atual = {}
     if os.path.exists(ARQUIVO_PROGRESSO):
@@ -77,21 +79,18 @@ def atualizar_progresso(area_nome_base, nova_contagem_ia):
     for nome_classe_ia, contagem_ia in nova_contagem_ia.items():
         chave_progresso = nome_classe_ia.replace('total_', '') 
         if chave_progresso not in progresso_atual:
-             progresso_atual[chave_progresso] = 0 
+            progresso_atual[chave_progresso] = 0 
 
         chave_plano = nome_classe_ia 
         limite_plano = plano_base.get(chave_plano, 0)
         valor_antigo = progresso_atual[chave_progresso]
+        # Esta é a sua lógica de "recorde" (High-score)
         valor_novo_max = max(valor_antigo, contagem_ia)
         valor_final = min(valor_novo_max, limite_plano)
         progresso_atual[chave_progresso] = valor_final
 
-    # 4. Recalcular o Total Geral
-    
-    # --- CORREÇÃO DO BUG 'int' object has no attribute 'replace' ---
-    # Usamos .values() em vez de .keys()
+    # 4. Recalcular o Total Geral (baseado nos valores MÁXIMOS salvos)
     total_executado_geral = sum(progresso_atual.get(v.replace('total_', ''), 0) for v in MAPEAMENTO_ID_NOME.values())
-    
     progresso_atual['elementos_executados_geral'] = total_executado_geral
 
     # 5. Salvar o arquivo de progresso
@@ -99,13 +98,19 @@ def atualizar_progresso(area_nome_base, nova_contagem_ia):
         json.dump(progresso_atual, f, indent=4)
         
     # 6. Preparar JSON de Retorno
-    total_planejado_geral = plano_base.get('total_elementos_geral', 1) 
-    if total_planejado_geral == 0: total_planejado_geral = 1 
+    # O percentual geral é baseado no 'total_executado_geral' (o recorde salvo)
     percentual_geral = (total_executado_geral / total_planejado_geral) * 100
     
     return {
         "area_inspecionada": area_nome_base,
-        "porcentagem_geral": round(percentual_geral, 2),
+        # O % GERAL (ex: 100%)
+        "porcentagem_geral": round(percentual_geral, 2), 
+        
+        # --- ADICIONADO ---
+        # O % SÓ DA IMAGEM (ex: 5%)
+        "porcentagem_imagem": round(percentual_da_imagem, 2), 
+        # --- FIM DA ADIÇÃO ---
+
         "total_executado": total_executado_geral,
         "total_planejado": total_planejado_geral,
         "detalhes_executados": progresso_atual,
@@ -177,10 +182,12 @@ def inference_model(model_path, image_path, output_dir, channels, area_nome):
         # --- FIM DA LINHA DE DEBUG ---
 
         if not contagem_ia:
-            raise Exception("Nenhum material detectado na imagem.")
-        
-        # Chama a função de progresso (com bug do .keys() corrigido)
-        resultado_progresso = atualizar_progresso(area_nome, contagem_ia)
+            # Mesmo se não detectar nada, precisamos retornar os valores corretos
+            # Chamamos a função com uma contagem vazia
+            resultado_progresso = atualizar_progresso(area_nome, {})
+        else:
+            # Chama a função de progresso 
+            resultado_progresso = atualizar_progresso(area_nome, contagem_ia)
         
         resultado_progresso['overlay'] = f"/results/{os.path.basename(output_dir)}/overlay.png"
         
@@ -194,17 +201,13 @@ def inference_model(model_path, image_path, output_dir, channels, area_nome):
             "overlay": f"/results/{os.path.basename(output_dir)}/overlay.png"
         }))
 
-# --- 6. PONTO DE ENTRADA (MAIN) (Corrigido) ---
+# --- 6. PONTO DE ENTRADA (MAIN) ---
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Teste de inferência para modelo')
     parser.add_argument('--model_path', required=True, help='Caminho para o modelo .pt')
     parser.add_argument('--image_path', required=True, help='Caminho para a imagem de teste')
     parser.add_argument('--output_dir', default='./inference_results', help='Pasta para salvar resultados')
-    
-    # --- CORREÇÃO DO BUG 'add_Falser' ---
     parser.add_argument('--channels', type=int, default=4, help='Número de classes')
-    # --- FIM DA CORREÇÃO ---
-    
     parser.add_argument('--area', required=True, help='A zona de inspeção (ex: plataforma)')
     
     args = parser.parse_args()
