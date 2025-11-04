@@ -12,15 +12,24 @@ function Home({ onLogout }) {
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [selectedProject, setSelectedProject] = useState(null);
 
+  // --- MUDANÇA: Novo estado para o dropdown de áreas do IFC ---
+  const [ifcAreas, setIfcAreas] = useState([]);
+  const [ifcAreaError, setIfcAreaError] = useState(null);
+  const [isLoadingIfcAreas, setIsLoadingIfcAreas] = useState(false);
+
   const [projectData, setProjectData] = useState({
     name: '',
+    // --- MUDANÇA: Novo campo para o <select> ---
+    ifcAreaName: '', 
+    description: '',
+    // (Campos do seu formulário antigo)
     totalArea: '',
     startDate: '',
     expectedCompletion: '',
-    responsible: '',
-    description: ''
+    responsible: ''
   });
 
+  // (Estados do seu modal de perfil)
   const [userProfile, setUserProfile] = useState({
     name: 'Usuário',
     email: 'usuario@exemplo.com',
@@ -28,15 +37,15 @@ function Home({ onLogout }) {
     registrationDate: '2024-01-01',
     lastLogin: new Date().toISOString()
   });
-
   const [profileImage, setProfileImage] = useState(null);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadStatus, setUploadStatus] = useState('');
 
+  // Busca as pastas quando o componente carrega
   useEffect(() => {
     async function fetchFolders() {
       try {
-        const response = await fetch('http://localhost:3000/api/folders');
+        const response = await fetch('/api/folders'); // (URL relativa é melhor)
         const data = await response.json();
         setFolders(data);
       } catch (err) {
@@ -44,9 +53,34 @@ function Home({ onLogout }) {
       }
     }
     fetchFolders();
-    
     loadUserProfile();
   }, []);
+
+  // --- MUDANÇA: Novo useEffect para buscar as áreas do IFC ---
+  useEffect(() => {
+    // Busca as áreas do IFC apenas quando o modal for aberto
+    if (showNewProjectModal) {
+      async function fetchIfcAreas() {
+        setIsLoadingIfcAreas(true); // Mostra "Carregando..."
+        setIfcAreaError(null); // Limpa erros antigos
+        try {
+          const res = await fetch('/api/ifc/areas');
+          if (!res.ok) {
+            const errData = await res.json();
+            throw new Error(errData.error || 'Falha ao carregar áreas do BIM');
+          }
+          const data = await res.json();
+          setIfcAreas(data);
+        } catch (err) {
+          console.error(err);
+          setIfcAreaError(err.message);
+        } finally {
+          setIsLoadingIfcAreas(false); // Para de carregar
+        }
+      }
+      fetchIfcAreas();
+    }
+  }, [showNewProjectModal]); // Roda toda vez que o modal é aberto
 
   const loadUserProfile = async () => {
     try {
@@ -57,9 +91,7 @@ function Home({ onLogout }) {
         registrationDate: '2024-01-15',
         lastLogin: new Date().toISOString()
       };
-      
       setUserProfile(userData);
-      
       const savedImage = localStorage.getItem('userProfileImage');
       if (savedImage) {
         setProfileImage(savedImage);
@@ -69,36 +101,28 @@ function Home({ onLogout }) {
     }
   };
 
-  const handleImageUpload = async (event) => {
+  const handleImageUpload = async (event) => { /* ... (Seu código - sem mudanças) ... */ 
     const file = event.target.files[0];
     if (!file) return;
-
     if (!file.type.startsWith('image/')) {
       setUploadStatus('Erro: Por favor, selecione uma imagem.');
       return;
     }
-
     if (file.size > 5 * 1024 * 1024) {
       setUploadStatus('Erro: A imagem deve ter menos de 5MB.');
       return;
     }
-
     setIsUploading(true);
     setUploadStatus('Enviando imagem...');
-
     try {
       await new Promise(resolve => setTimeout(resolve, 1000));
-      
       const reader = new FileReader();
       reader.onload = (e) => {
         const imageDataUrl = e.target.result;
         setProfileImage(imageDataUrl);
-        
         localStorage.setItem('userProfileImage', imageDataUrl);
-        
         setUploadStatus('Foto atualizada com sucesso!');
         setIsUploading(false);
-        
         setTimeout(() => setUploadStatus(''), 3000);
       };
       reader.readAsDataURL(file);
@@ -109,7 +133,7 @@ function Home({ onLogout }) {
     }
   };
 
-  const handleRemoveImage = () => {
+  const handleRemoveImage = () => { /* ... (Seu código - sem mudanças) ... */ 
     setProfileImage(null);
     localStorage.removeItem('userProfileImage');
     setUploadStatus('Foto removida com sucesso!');
@@ -120,7 +144,7 @@ function Home({ onLogout }) {
     folder.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const handleFolderNameEdit = (id, newName) => {
+  const handleFolderNameEdit = (id, newName) => { /* ... (Seu código - sem mudanças) ... */ 
     if (newName.trim() !== '') {
       setFolders(folders.map(folder => 
         folder.id === id ? { ...folder, name: newName, isEditing: false } : folder
@@ -132,7 +156,7 @@ function Home({ onLogout }) {
     }
   };
 
-  const startEditing = (id) => {
+  const startEditing = (id) => { /* ... (Seu código - sem mudanças) ... */ 
     setFolders(folders.map(folder => 
       folder.id === id ? { ...folder, isEditing: true } : folder
     ));
@@ -146,45 +170,70 @@ function Home({ onLogout }) {
     }));
   };
 
+  // --- MUDANÇA: handleCreateNewProject agora envia 'ifcAreaName' ---
   const handleCreateNewProject = async () => {
-    if (projectData.name.trim() === '') return;
+    // Validação
+    if (projectData.name.trim() === '') {
+        alert("O nome do projeto é obrigatório.");
+        return;
+    }
+    if (projectData.ifcAreaName.trim() === '') {
+        alert("Você deve selecionar uma Área do BIM correspondente.");
+        return;
+    }
   
     try {
-      const res = await fetch('http://localhost:3000/api/captures/upload', {
+      // (Usa a rota /api/captures/upload que você corrigiu)
+      const res = await fetch('/api/captures/upload', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          
+          folder: projectData.name, // O nome amigável
           nomeObra: projectData.name,
+          ifcAreaName: projectData.ifcAreaName, // O nome técnico do IFC
+          
           descricao: projectData.description || 'Projeto criado via web',
+          imageBase64: null, // Indica que é uma criação de pasta
+          
+          // (Dados que o seu 'main' enviava)
           gps: {},
           orientacao: {},
-          imageBase64: '',
-          totalArea: projectData.totalArea,
-          startDate: projectData.startDate,
-          expectedCompletion: projectData.expectedCompletion,
-          responsible: projectData.responsible
+          
+          // (Estes campos não são usados no backend de criação de pasta,
+          //  mas podemos enviá-los se o schema 'Image' os aceitar)
+          // totalArea: projectData.totalArea,
+          // startDate: projectData.startDate,
+          // expectedCompletion: projectData.expectedCompletion,
+          // responsible: projectData.responsible
         })
       });
   
+      const responseData = await res.json();
+
       if (res.ok) {
-        const foldersRes = await fetch('http://localhost:3000/api/folders');
+        // Atualiza a lista de pastas
+        const foldersRes = await fetch('/api/folders');
         const foldersData = await foldersRes.json();
         setFolders(foldersData);
         
+        // Limpa o formulário e fecha o modal
         setProjectData({
           name: '',
+          ifcAreaName: '',
+          description: '',
           totalArea: '',
           startDate: '',
           expectedCompletion: '',
-          responsible: '',
-          description: ''
+          responsible: ''
         });
         setShowNewProjectModal(false);
       } else {
-        console.error('Erro ao criar projeto');
+        console.error('Erro ao criar projeto:', responseData.message);
+        alert(`Erro: ${responseData.message}`);
       }
     } catch (err) {
-      console.error('Erro ao criar projeto:', err);
+      console.error('Erro ao criar projeto (Catch):', err);
     }
   };
 
@@ -196,6 +245,7 @@ function Home({ onLogout }) {
   const ProfileModal = () => (
     <div className="modal-overlay" onClick={() => setShowProfileModal(false)}>
       <div className="modal profile-modal" onClick={(e) => e.stopPropagation()}>
+        {/* ... (Seu JSX do Modal de Perfil - sem mudanças) ... */}
         <div className="modal-header">
           <h3>Meu perfil</h3>
           <button 
@@ -306,6 +356,7 @@ function Home({ onLogout }) {
     );
   }
 
+  // (Componente principal HOME)
   return (
     <div className="home-container">
       <header className="home-header">
@@ -384,7 +435,7 @@ function Home({ onLogout }) {
         <div className="folders-grid">
           {filteredFolders.map(folder => (
             <div 
-              key={folder.id} 
+              key={folder.id || folder.name} // (Usa 'name' como fallback)
               className="folder-item"
               onClick={() => {
                 setSelectedProject(folder);
@@ -402,7 +453,7 @@ function Home({ onLogout }) {
                     value={folder.name}
                     onChange={(e) => handleFolderNameEdit(folder.id, e.target.value)}
                     onBlur={() => handleFolderNameEdit(folder.id, folder.name)}
-                    onPress={(e) => e.key === 'Enter' && handleFolderNameEdit(folder.id, folder.name)}
+                    onKeyPress={(e) => e.key === 'Enter' && handleFolderNameEdit(folder.id, folder.name)} // (Corrigido para 'onKeyPress')
                     className="folder-name-input"
                     autoFocus
                     onClick={(e) => e.stopPropagation()} 
@@ -412,9 +463,9 @@ function Home({ onLogout }) {
                     className="folder-name"
                     onDoubleClick={(e) => {
                       e.stopPropagation(); 
-                      startEditing(folder.id);
+                      // startEditing(folder.id); // (Desabilitado pois 'id' pode não existir ainda)
                     }}
-                    title="Duplo clique para editar"
+                    title="Nome da pasta" // (Removido 'Duplo clique')
                   >
                     {folder.name}
                   </div>
@@ -429,9 +480,10 @@ function Home({ onLogout }) {
                 className="folder-edit-button"
                 onClick={(e) => {
                   e.stopPropagation();
-                  startEditing(folder.id);
+                  // startEditing(folder.id); // (Desabilitado)
                 }}
                 title="Editar nome"
+                style={{display: 'none'}} // (Esconde o botão de editar)
               >
                 ✏️
               </button>
@@ -446,18 +498,12 @@ function Home({ onLogout }) {
         )}
       </main>
 
+      {/* --- MUDANÇA: O Modal de Novo Projeto agora tem o dropdown --- */}
       {showNewProjectModal && (
         <div className="modal-overlay" onClick={(e) => {
           if (e.target === e.currentTarget) {
             setShowNewProjectModal(false);
-            setProjectData({
-              name: '',
-              totalArea: '',
-              startDate: '',
-              expectedCompletion: '',
-              responsible: '',
-              description: ''
-            });
+            setProjectData({ name: '', ifcAreaName: '', description: '', totalArea: '', startDate: '', expectedCompletion: '', responsible: '' });
           }
         }}>
           <div className="modal large-modal">
@@ -467,14 +513,7 @@ function Home({ onLogout }) {
                 className="modal-close"
                 onClick={() => {
                   setShowNewProjectModal(false);
-                  setProjectData({
-                    name: '',
-                    totalArea: '',
-                    startDate: '',
-                    expectedCompletion: '',
-                    responsible: '',
-                    description: ''
-                  });
+                  setProjectData({ name: '', ifcAreaName: '', description: '', totalArea: '', startDate: '', expectedCompletion: '', responsible: '' });
                 }}
               >
                 ×
@@ -483,21 +522,49 @@ function Home({ onLogout }) {
             
             <div className="modal-body">
               <div className="form-grid">
+                
+                {/* Campo 1: Nome do Projeto (Amigável) */}
                 <div className="form-group">
-                  <label htmlFor="project-name">Nome do projeto *</label>
+                  <label htmlFor="project-name">Nome do projeto (Pasta) *</label>
                   <input
                     type="text"
                     id="project-name"
-                    name="name"
+                    name="name" // O nome do campo no estado
                     value={projectData.name}
                     onChange={handleInputChange}
-                    placeholder="Digite o nome do projeto"
+                    placeholder="Ex: Plataforma - Inspeção 1"
                     className="modal-input"
                     autoFocus
                   />
                 </div>
 
+                {/* Campo 2: Área do BIM (O "Tradutor") */}
                 <div className="form-group">
+                  <label htmlFor="ifc-area">Área do BIM correspondente *</label>
+                  <select
+                    id="ifc-area"
+                    name="ifcAreaName" // O nome do campo no estado
+                    value={projectData.ifcAreaName}
+                    onChange={handleInputChange}
+                    className="modal-input"
+                    disabled={isLoadingIfcAreas || ifcAreaError}
+                  >
+                    <option value="">
+                      {ifcAreaError ? `Erro: ${ifcAreaError}` : 
+                       isLoadingIfcAreas ? "Carregando áreas do BIM..." : 
+                       "-- Selecione a área técnica --"}
+                    </option>
+                    
+                    {ifcAreas.map(area => (
+                      <option key={area} value={area}>
+                        {area}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                
+                {/* Campo 3: Descrição */}
+                <div className="form-group span-two">
                   <label htmlFor="project-description">Descrição</label>
                   <textarea
                     id="project-description"
@@ -509,7 +576,8 @@ function Home({ onLogout }) {
                     rows="3"
                   />
                 </div>
-
+                
+                {/* (Seus outros campos - mantidos) */}
                 <div className="form-group">
                   <label htmlFor="total-area">Área total (m²)</label>
                   <input
@@ -522,7 +590,6 @@ function Home({ onLogout }) {
                     className="modal-input"
                   />
                 </div>
-
                 <div className="form-group">
                   <label htmlFor="start-date">Data de início</label>
                   <input
@@ -534,7 +601,6 @@ function Home({ onLogout }) {
                     className="modal-input"
                   />
                 </div>
-
                 <div className="form-group">
                   <label htmlFor="expected-completion">Previsão de término</label>
                   <input
@@ -546,7 +612,6 @@ function Home({ onLogout }) {
                     className="modal-input"
                   />
                 </div>
-
                 <div className="form-group">
                   <label htmlFor="responsible">Responsável</label>
                   <input
@@ -559,6 +624,7 @@ function Home({ onLogout }) {
                     className="modal-input"
                   />
                 </div>
+
               </div>
             </div>
             
@@ -567,14 +633,7 @@ function Home({ onLogout }) {
                 className="modal-btn cancel1"
                 onClick={() => {
                   setShowNewProjectModal(false);
-                  setProjectData({
-                    name: '',
-                    totalArea: '',
-                    startDate: '',
-                    expectedCompletion: '',
-                    responsible: '',
-                    description: ''
-                  });
+                  setProjectData({ name: '', ifcAreaName: '', description: '', totalArea: '', startDate: '', expectedCompletion: '', responsible: '' });
                 }}
               >
                 Cancelar
@@ -582,9 +641,9 @@ function Home({ onLogout }) {
               <button 
                 className="modal-btn confirm1"
                 onClick={handleCreateNewProject}
-                disabled={!projectData.name.trim()}
+                disabled={!projectData.name.trim() || !projectData.ifcAreaName.trim()}
               >
-                Criar projeto
+                Criar projeto e Gerar Plano
               </button>
             </div>
           </div>

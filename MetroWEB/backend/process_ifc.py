@@ -3,10 +3,11 @@ import ifcopenshell
 import json
 import sys
 import os
+import argparse # <-- Vamos usar argparse para aceitar argumentos
 
 # --- ARQUIVOS DE CONFIGURAÇÃO ---
 CAMINHO_DO_IFC = 'C:/Users/Victor/Downloads/MB-1.04.04.00-6B3-1001-1_v32.ifc'
-ARQUIVO_MAPEAMENTO = 'area_mapping.json' # <-- O "Tradutor"
+ARQUIVO_MAPEAMENTO_LEGADO = 'area_mapping.json' # (Ainda usado para o modo "gerar todos")
 
 # --- MAPEAMENTO IA -> BIM (Tipos de Elemento) ---
 MAPEAMENTO_CLASSES = {
@@ -44,62 +45,78 @@ def contar_elementos_na_area(ifc_file, area_encontrada):
                     pass # Ignora elementos sem estrutura
     return plano_esperado
 
+def gerar_plano_unico(base_dir, ifc_file, nome_pasta_limpo, nome_ifc):
+    """Gera um único arquivo de plano base."""
+    print(f"\nProcessando pasta: '{nome_pasta_limpo}' (Mapeada para: '{nome_ifc}')")
+    
+    # 1. Encontrar a área no IFC
+    area_ifc = encontrar_area_no_ifc(ifc_file, nome_ifc)
+    
+    if not area_ifc:
+        print(f"  [ERRO] A área técnica '{nome_ifc}' não foi encontrada no IFC. Pulando...")
+        return False
+        
+    print(f"  -> Área '{nome_ifc}' encontrada (ID: {area_ifc.id()}). Contando elementos...")
+    
+    # 2. Contar os elementos dentro dela
+    plano_json = contar_elementos_na_area(ifc_file, area_ifc)
+    
+    # 3. Salvar o arquivo de plano (ex: 'plano_base_teste.json')
+    nome_arquivo_saida = f"plano_base_{nome_pasta_limpo}.json"
+    caminho_saida = os.path.join(base_dir, nome_arquivo_saida)
+    
+    try:
+        with open(caminho_saida, 'w', encoding='utf-8') as f:
+            json.dump(plano_json, f, indent=2)
+        print(f"  -> SUCESSO! Plano salvo em '{nome_arquivo_saida}'.")
+        print(f"     {json.dumps(plano_json)}")
+        return True
+    except Exception as e:
+        print(f"  [ERRO] Falha ao salvar o arquivo '{nome_arquivo_saida}'. {e}")
+        return False
+
 # --- PONTO DE ENTRADA (MAIN) ---
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description='Gerador de Plano Base BIM.')
+    parser.add_argument('--folder', type=str, help='Nome da pasta amigável (ex: "joao")')
+    parser.add_argument('--ifc_name', type=str, help='Nome técnico da área no IFC (ex: "EST - 04.PLATAFORMA")')
+    args = parser.parse_args()
+
     base_dir = os.path.dirname(os.path.abspath(__file__))
-    caminho_mapa = os.path.join(base_dir, ARQUIVO_MAPEAMENTO)
-    
-    # 1. Carregar o arquivo de mapeamento (o "tradutor")
-    try:
-        # Força a leitura em UTF-8 por causa dos acentos
-        with open(caminho_mapa, 'r', encoding='utf-8') as f:
-            mapeamento_pastas = json.load(f)
-        print(f"Arquivo de mapeamento '{ARQUIVO_MAPEAMENTO}' carregado (UTF-8).")
-    except Exception as e:
-        print(f"Erro CRÍTICO: Não foi possível ler o arquivo '{ARQUIVO_MAPEAMENTO}'. {e}")
-        sys.exit(1)
-        
-    # 2. Carregar o arquivo IFC (uma única vez)
+
+    # 1. Carregar o arquivo IFC (uma única vez)
     try:
         print(f"Carregando arquivo BIM de: {CAMINHO_DO_IFC}")
         ifc_file = ifcopenshell.open(CAMINHO_DO_IFC)
     except Exception as e:
-        print(f"Erro CRÍTICO ao abrir o arquivo IFC: {e}")
+        print(f"Erro CRÍTICO ao abrir o arquivo IFC: {e}", file=sys.stderr)
         sys.exit(1)
 
-    print("-" * 50)
-    print("Iniciando geração de TODOS os planos base...")
-
-    # 3. Iterar sobre o mapeamento e gerar um plano para CADA pasta
-    for nome_pasta, nome_ifc in mapeamento_pastas.items():
-        # Limpa o nome da pasta (lowercase) para garantir o match do arquivo
-        nome_pasta_limpo = nome_pasta.lower().strip()
-        
-        print(f"\nProcessando pasta: '{nome_pasta_limpo}' (Mapeada para: '{nome_ifc}')")
-        
-        # 3a. Encontrar a área no IFC
-        area_ifc = encontrar_area_no_ifc(ifc_file, nome_ifc)
-        
-        if not area_ifc:
-            print(f"  [ERRO] A área técnica '{nome_ifc}' não foi encontrada no IFC. Pulando...")
-            continue
-            
-        print(f"  -> Área '{nome_ifc}' encontrada (ID: {area_ifc.id()}). Contando elementos...")
-        
-        # 3b. Contar os elementos dentro dela
-        plano_json = contar_elementos_na_area(ifc_file, area_ifc)
-        
-        # 3c. Salvar o arquivo de plano (ex: 'plano_base_teste.json')
-        nome_arquivo_saida = f"plano_base_{nome_pasta_limpo}.json"
-        caminho_saida = os.path.join(base_dir, nome_arquivo_saida)
+    # --- MODO 2: GERAÇÃO ÚNICA (Chamado pelo Node.js) ---
+    if args.folder and args.ifc_name:
+        print(f"Modo de Geração Única para pasta: {args.folder}")
+        nome_pasta_limpo = args.folder.lower().strip()
+        gerar_plano_unico(base_dir, ifc_file, nome_pasta_limpo, args.ifc_name)
+    
+    # --- MODO 1: GERAÇÃO EM LOTE (Legado, para rodar manualmente) ---
+    else:
+        print("Modo de Geração em Lote (lendo 'area_mapping.json')")
+        caminho_mapa = os.path.join(base_dir, ARQUIVO_MAPEAMENTO_LEGADO)
         
         try:
-            with open(caminho_saida, 'w', encoding='utf-8') as f:
-                json.dump(plano_json, f, indent=2)
-            print(f"  -> SUCESSO! Plano salvo em '{nome_arquivo_saida}'.")
-            print(f"     {json.dumps(plano_json)}")
+            with open(caminho_mapa, 'r', encoding='utf-8') as f:
+                mapeamento_pastas = json.load(f)
+            print(f"Arquivo de mapeamento '{ARQUIVO_MAPEAMENTO_LEGADO}' carregado (UTF-8).")
         except Exception as e:
-            print(f"  [ERRO] Falha ao salvar o arquivo '{nome_arquivo_saida}'. {e}")
+            print(f"Erro CRÍTICO: Não foi possível ler o arquivo '{ARQUIVO_MAPEAMENTO_LEGADO}'. {e}")
+            sys.exit(1)
+
+        print("-" * 50)
+        print("Iniciando geração de TODOS os planos base...")
+
+        for nome_pasta, nome_ifc in mapeamento_pastas.items():
+            nome_pasta_limpo = nome_pasta.lower().strip()
+            gerar_plano_unico(base_dir, ifc_file, nome_pasta_limpo, nome_ifc)
             
-    print("-" * 50)
-    print("Geração de planos concluída.")
+        print("-" * 50)
+        print("Geração de planos em lote concluída.")
