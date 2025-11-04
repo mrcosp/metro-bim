@@ -1,19 +1,25 @@
-# MetroWEB/backend/process_ifc.py
 import ifcopenshell
 import json
 import sys
 import os
-import argparse # <-- Vamos usar argparse para aceitar argumentos
+import argparse 
 
-# --- ARQUIVOS DE CONFIGURAÇÃO ---
-CAMINHO_DO_IFC = 'C:/Users/Victor/Downloads/MB-1.04.04.00-6B3-1001-1_v32.ifc'
-ARQUIVO_MAPEAMENTO_LEGADO = 'area_mapping.json' # (Ainda usado para o modo "gerar todos")
+# --- CORREÇÃO DE CAMINHO ---
+base_dir = os.path.dirname(os.path.abspath(__file__))
+CAMINHO_DO_IFC = os.path.join(base_dir, 'MB-1.04.04.00-6B3-1001-1_v32.ifc')
+# --- FIM DA CORREÇÃO ---
+
+# --- MUDANÇA AQUI ---
+JSON_DIR = os.path.join(base_dir, "json_files") # Define o diretório de saída
+# --- FIM DA MUDANÇA ---
+
+ARQUIVO_MAPEAMENTO_LEGADO = 'area_mapping.json' 
 
 # --- MAPEAMENTO IA -> BIM (Tipos de Elemento) ---
 MAPEAMENTO_CLASSES = {
     'total_concreto': ['IfcWall', 'IfcSlab', 'IfcStair'],
-    'total_metal': ['IfcRailing', 'IfcCurtainWall'],     
-    'total_deck_metalico': ['IfcCovering']               
+    'total_metal': ['IfcRailing', 'IfcCurtainWall'],    
+    'total_deck_metalico': ['IfcCovering']             
 }
 # -----------------------------------------------------------
 
@@ -61,14 +67,17 @@ def gerar_plano_unico(base_dir, ifc_file, nome_pasta_limpo, nome_ifc):
     # 2. Contar os elementos dentro dela
     plano_json = contar_elementos_na_area(ifc_file, area_ifc)
     
-    # 3. Salvar o arquivo de plano (ex: 'plano_base_teste.json')
+    # --- MUDANÇA AQUI ---
+    # 3. Salvar o arquivo de plano na pasta 'json_files'
+    os.makedirs(JSON_DIR, exist_ok=True) # Garante que a pasta exista
     nome_arquivo_saida = f"plano_base_{nome_pasta_limpo}.json"
-    caminho_saida = os.path.join(base_dir, nome_arquivo_saida)
+    caminho_saida = os.path.join(JSON_DIR, nome_arquivo_saida) # <-- Aponta para a subpasta
+    # --- FIM DA MUDANÇA ---
     
     try:
         with open(caminho_saida, 'w', encoding='utf-8') as f:
             json.dump(plano_json, f, indent=2)
-        print(f"  -> SUCESSO! Plano salvo em '{nome_arquivo_saida}'.")
+        print(f"  -> SUCESSO! Plano salvo em '{caminho_saida}'.") # <-- Caminho atualizado no log
         print(f"     {json.dumps(plano_json)}")
         return True
     except Exception as e:
@@ -82,9 +91,14 @@ if __name__ == "__main__":
     parser.add_argument('--ifc_name', type=str, help='Nome técnico da área no IFC (ex: "EST - 04.PLATAFORMA")')
     args = parser.parse_args()
 
-    base_dir = os.path.dirname(os.path.abspath(__file__))
-
+    # base_dir já foi definido no topo
+    
     # 1. Carregar o arquivo IFC (uma única vez)
+    if not os.path.exists(CAMINHO_DO_IFC):
+        print(f"Erro CRÍTICO: Arquivo IFC não encontrado em '{CAMINHO_DO_IFC}'.")
+        print("Certifique-se que 'MB-1.04.04.00-6B3-1001-1_v32.ifc' está na pasta /backend.", file=sys.stderr)
+        sys.exit(1)
+        
     try:
         print(f"Carregando arquivo BIM de: {CAMINHO_DO_IFC}")
         ifc_file = ifcopenshell.open(CAMINHO_DO_IFC)

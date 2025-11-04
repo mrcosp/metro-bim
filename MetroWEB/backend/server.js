@@ -10,15 +10,20 @@ import path, { dirname } from "path";
 import { fileURLToPath } from "url";
 import cors from 'cors';
 import fs from "fs"; 
-import { spawn } from "child_process"; // <-- IMPORT MOVIdO PARA CIMA
+import { spawn } from "child_process"; 
 
 dotenv.config();
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
+// --- MUDANÇA AQUI ---
+// Define e cria os diretórios de resultados e JSON
 const resultsDir = path.join(__dirname, "results");
+const jsonDir = path.join(__dirname, "json_files"); // <-- NOVO
 if (!fs.existsSync(resultsDir)) fs.mkdirSync(resultsDir, { recursive: true });
+if (!fs.existsSync(jsonDir)) fs.mkdirSync(jsonDir, { recursive: true }); // <-- NOVO
+// --- FIM DA MUDANÇA ---
 
 const app = express();
 
@@ -646,8 +651,11 @@ app.get('/api/ifc/areas', (req, res) => {
 app.get('/api/progress/:area', (req, res) => {
     const areaNome = req.params.area.toLowerCase(); // Ex: 'plataforma'
     
-    const progressoPath = path.join(__dirname, `progresso_${areaNome}.json`);
-    const planoPath = path.join(__dirname, `plano_base_${areaNome}.json`);
+    // --- MUDANÇA AQUI ---
+    // Os caminhos agora apontam para a subpasta 'json_files'
+    const progressoPath = path.join(jsonDir, `progresso_${areaNome}.json`);
+    const planoPath = path.join(jsonDir, `plano_base_${areaNome}.json`);
+    // --- FIM DA MUDANÇA ---
     
     // Primeiro, verifica se o plano existe
     if (!fs.existsSync(planoPath)) {

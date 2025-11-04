@@ -1,13 +1,17 @@
-# MetroWEB/backend/get_ifc_areas.py
 import ifcopenshell
 import json
 import sys
 import os
 
-# Caminho para o seu arquivo .ifc
-CAMINHO_DO_IFC = 'C:/Users/Victor/Downloads/MB-1.04.04.00-6B3-1001-1_v32.ifc'
+# --- CORREÇÃO DE CAMINHO ---
+base_dir = os.path.dirname(os.path.abspath(__file__))
+CAMINHO_DO_IFC = os.path.join(base_dir, 'MB-1.04.04.00-6B3-1001-1_v32.ifc')
+# --- FIM DA CORREÇÃO ---
 
 try:
+    if not os.path.exists(CAMINHO_DO_IFC):
+        raise Exception(f"Arquivo IFC não encontrado em '{CAMINHO_DO_IFC}'. Coloque-o na pasta /backend.")
+
     ifc_file = ifcopenshell.open(CAMINHO_DO_IFC)
     
     areas = []

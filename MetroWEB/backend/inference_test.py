@@ -1,4 +1,3 @@
-# MetroWEB/backend/inference_test.py
 import torch
 import numpy as np
 from PIL import Image
@@ -34,10 +33,14 @@ def contar_instancias(prediction_map):
 
 # --- 3. FUNÇÃO DE ATUALIZAR PROGRESSO (Lógica Nova) ---
 def atualizar_progresso(area_nome_base, nova_contagem):
-    # Encontra os arquivos de progresso (na mesma pasta do script)
     base_dir = os.path.dirname(os.path.abspath(__file__))
-    ARQUIVO_PLANO = os.path.join(base_dir, f"plano_base_{area_nome_base}.json")
-    ARQUIVO_PROGRESSO = os.path.join(base_dir, f"progresso_{area_nome_base}.json")
+    
+    # --- MUDANÇA AQUI ---
+    json_dir = os.path.join(base_dir, "json_files")
+    os.makedirs(json_dir, exist_ok=True) # Garante que a pasta exista
+    ARQUIVO_PLANO = os.path.join(json_dir, f"plano_base_{area_nome_base}.json")
+    ARQUIVO_PROGRESSO = os.path.join(json_dir, f"progresso_{area_nome_base}.json")
+    # --- FIM DA MUDANÇA ---
 
     if not os.path.exists(ARQUIVO_PLANO):
         raise Exception(f"Arquivo de plano '{ARQUIVO_PLANO}' não encontrado.")
