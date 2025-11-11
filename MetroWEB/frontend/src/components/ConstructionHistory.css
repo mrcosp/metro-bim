@@ -958,3 +958,58 @@
     font-size: 0.75rem;
   }
 }
+
+/* --- MUDANÇA: NOVOS ESTILOS PARA O OVERLAY BIM --- */
+
+/* A imagem de sobreposição BIM */
+.bim-overlay-image {
+  /* Cobre exatamente a imagem original */
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  
+  /* A translucidez! */
+  opacity: 0.5; 
+  
+  /* Garante que a imagem não seja "clicável" e não bloqueie os botões de navegação */
+  pointer-events: none; 
+  
+  /* Mantém o aspect ratio igual ao da imagem original */
+  object-fit: cover; 
+}
+
+/* Estilo para o novo botão de toggle do BIM */
+.bim-overlay-btn {
+  background: linear-gradient(135deg, #007bff, #0056b3);
+  color: white;
+  border: none;
+  border-radius: 8px; /* (Ajustado para 8px como o botão AI) */
+  padding: 0.5rem 1rem; /* (Ajustado para 8px como o botão AI) */
+  font-size: 0.8rem; /* (Ajustado para 8px como o botão AI) */
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin-left: 8px; /* Espaço do botão de IA */
+  min-height: 36px; /* (Ajustado para 8px como o botão AI) */
+}
+
+/* Estilo do botão quando ativo (igual ao de Análise IA) */
+.bim-overlay-btn.comparison-active {
+  background: linear-gradient(135deg, #6c757d, #5a6268);
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.bim-overlay-btn:hover:not(:disabled) {
+  opacity: 0.9;
+}
+
+/* Ajuste de responsividade para o novo botão */
+@media (max-width: 768px) {
+  .bim-overlay-btn {
+    margin-left: 0;
+    width: 100%;
+    justify-content: center;
+  }
+}

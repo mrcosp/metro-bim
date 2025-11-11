@@ -113,7 +113,7 @@ app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
 // -----------------------------------------------------
 // 2. ENDPOINT DE UPLOAD (ANDROID E WEB)
-//    (Sua lógica da "main", agora com automação de plano)
+//     (Sua lógica da "main", agora com automação de plano)
 // -----------------------------------------------------
 app.post('/api/captures/upload', async (req, res) => {
     try {
@@ -557,9 +557,9 @@ app.post("/inference/:id", async (req, res) => {
                         // Salva o snapshot da porcentagem na imagem
                         try {
                            await Image.findByIdAndUpdate(imageId, { 
-                               progress_snapshot: resultadoFinal.porcentagem_geral 
+                               progress_snapshot: resultadoFinal.porcentagem_imagem // <-- ATUALIZADO
                            });
-                           console.log(`✅ Snapshot de progresso (${resultadoFinal.porcentagem_geral}%) salvo na Imagem ${imageId}`);
+                           console.log(`✅ Snapshot de progresso (${resultadoFinal.porcentagem_imagem}%) salvo na Imagem ${imageId}`);
                         } catch (dbErr) {
                            console.error(`❌ Erro ao salvar snapshot no MongoDB: ${dbErr}`);
                         }
@@ -589,7 +589,7 @@ app.get('/api/folders', async (req, res) => {
         const folders = await Image.distinct("folder", { 
             folder: { $exists: true, $ne: null, $ne: "" } 
         });
- 
+
         const foldersData = await Promise.all(folders.map(async (folderName) => {
             const lastImage = await Image.findOne({ folder: folderName })
                 .sort({ createdAt: -1 });
@@ -600,7 +600,7 @@ app.get('/api/folders', async (req, res) => {
                 type: 'folder'
             };
         }));
- 
+
         res.json(foldersData);
     } catch (err) {
         console.error(err);
@@ -696,6 +696,31 @@ app.get('/api/progress/:area', (req, res) => {
          res.status(500).json({ error: 'Falha ao ler arquivos de progresso', details: err.message });
     }
 });
+
+// --- ROTA NOVA ADICIONADA (PARA SERVIR A IMAGEM DO PLANO 100%) ---
+app.get('/api/plan-image/:area', (req, res) => {
+    const areaNome = req.params.area.toLowerCase();
+    
+    // --- MUDANÇA AQUI ---
+    // O caminho agora aponta para a subpasta 'json_files'
+    // Estamos procurando por um arquivo PNG, mas você pode mudar para JPG se preferir
+    const planImagePath = path.join(jsonDir, `plan_${areaNome}.png`); 
+    // --- FIM DA MUDANÇA ---
+
+    // Verifica se a imagem do plano existe
+    if (fs.existsSync(planImagePath)) {
+        res.sendFile(planImagePath);
+    } else {
+        // Se não encontrar, tenta com .jpg
+        const planImagePathJpg = path.join(jsonDir, `plan_${areaNome}.jpg`);
+        if (fs.existsSync(planImagePathJpg)) {
+            res.sendFile(planImagePathJpg);
+        } else {
+            res.status(404).json({ error: `Imagem do plano (plan_${areaNome}.png/jpg) não encontrada.`});
+        }
+    }
+});
+
 
 // --- FUNÇÃO HELPER ADICIONADA ---
 function round(value, decimals) {
