@@ -11,6 +11,10 @@ function ConstructionHistory({ projectName, onBack }) {
   const [aiProcessedImage, setAiProcessedImage] = useState(null);
   const [progressData, setProgressData] = useState(null);
 
+  const [showBimOverlay, setShowBimOverlay] = useState(false);
+  const [bimPlanImage, setBimPlanImage] = useState(null);
+  const [isLoadingBimPlan, setIsLoadingBimPlan] = useState(false);
+
   // Buscar imagens e progresso
   useEffect(() => {
     
@@ -29,7 +33,6 @@ function ConstructionHistory({ projectName, onBack }) {
             progress_snapshot: img.progress_snapshot 
           })));
 
-          // Seta o sumário apenas se houver imagens
           setSummary({
             totalArea: '15.000 m²',
             startDate: data[0].criado_em,
@@ -62,8 +65,29 @@ function ConstructionHistory({ projectName, onBack }) {
       }
     };
 
+    // Função para buscar a imagem do plano BIM 100%
+    const fetchPlanImage = async () => {
+        if (!projectName) return;
+        setIsLoadingBimPlan(true);
+        try {
+            const res = await fetch(`/api/plan-image/${projectName}`);
+            if (res.ok) {
+                setBimPlanImage(res.url); 
+            } else {
+                console.warn(`Imagem do plano (100%) para '${projectName}' não encontrada.`);
+                setBimPlanImage(null);
+            }
+        } catch (err) {
+            console.error('Erro ao buscar imagem do plano:', err);
+            setBimPlanImage(null);
+        } finally {
+            setIsLoadingBimPlan(false);
+        }
+    };
+
     fetchImages();
     fetchProgress(); 
+    fetchPlanImage();
     
   }, [projectName]); 
 
@@ -87,20 +111,20 @@ function ConstructionHistory({ projectName, onBack }) {
       setSelectedFile(file);
     }
   };
-  
+ 
   // Função de upload
   const handleUpload = async () => {
     if (!selectedFile) return;
-  
+ 
     const toBase64 = (file) => new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.readAsDataURL(file);
       reader.onload = () => resolve(reader.result);
       reader.onerror = (error) => reject(error);
     });
-  
+ 
     const imageBase64 = await toBase64(selectedFile);
-  
+ 
     const payload = {
       nomeObra: projectName,
       folder: projectName, 
@@ -110,7 +134,7 @@ function ConstructionHistory({ projectName, onBack }) {
       orientacao: { azimute_graus: 0, pitch_graus: 0, roll_graus: 0 },
       imageBase64
     };
-  
+ 
     try {
       const res = await fetch('/api/captures/upload', {
         method: 'POST',
@@ -121,33 +145,28 @@ function ConstructionHistory({ projectName, onBack }) {
       if (data.success) {
         alert('Imagem enviada com sucesso!');
         setSelectedFile(null);
-  
+ 
         // Recarrega as imagens
         const updated = await fetch(`/folder/${projectName}`);
         const imagesData = await updated.json();
         
-        // --- CORREÇÃO AQUI ---
-        // Precisamos atualizar o estado `images` E `summary` 
-        // quando a *primeira* imagem é enviada
         if (imagesData.length > 0) {
            setImages(imagesData.map((img, i) => ({
-            id: img.id,
-            url: img.base64,
-            date: img.criado_em,
-            description: img.descricao || 'Sem descrição',
-            progress_snapshot: img.progress_snapshot
-          })));
+             id: img.id,
+             url: img.base64,
+             date: img.criado_em,
+             description: img.descricao || 'Sem descrição',
+             progress_snapshot: img.progress_snapshot
+           })));
           
-          // Seta o sumário que antes era nulo
            setSummary({
-            totalArea: '15.000 m²',
-            startDate: imagesData[0].criado_em, // Usa a data da nova imagem
-            expectedCompletion: '2025-12-31',
-            responsible: 'Eng. Responsável',
-            status: 'Em andamento'
-          });
+             totalArea: '15.000 m²',
+             startDate: imagesData[0].criado_em,
+             expectedCompletion: '2025-12-31',
+             responsible: 'Eng. Responsável',
+             status: 'Em andamento'
+           });
         }
-        // --- FIM DA CORREÇÃO ---
         
       } else {
         alert('Erro: ' + data.message);
@@ -216,8 +235,7 @@ function ConstructionHistory({ projectName, onBack }) {
   const currentImage = images[currentImageIndex];
   const realProgress = progressData ? progressData.porcentagem_geral : 0;
 
-  // --- CORREÇÃO AQUI ---
-  // Este é o bloco renderizado quando não há imagens (images.length === 0)
+  // Bloco 'sem imagem' (sem mudanças)
   if (!currentImage) {
     return (
       <div className="history-container">
@@ -227,11 +245,9 @@ function ConstructionHistory({ projectName, onBack }) {
         </header>
         <p className="text-center mt-8">Nenhuma imagem encontrada.</p>
         
-        {/* Adicionado o formulário de upload aqui */}
         <div className="summary-section">
-            <div className="upload-section" style={{ margin: '0 auto', maxWidth: '400px' }}> {/* Centraliza */}
+            <div className="upload-section" style={{ margin: '0 auto', maxWidth: '400px' }}>
               <h3>Adicionar nova imagem</h3>
-              
               <div className="upload-area">
                 <input
                   id="file-input"
@@ -243,7 +259,6 @@ function ConstructionHistory({ projectName, onBack }) {
                 <label htmlFor="file-input" className="upload-button">
                   📷 Selecionar imagem
                 </label>
-
                 {selectedFile && (
                   <div className="selected-file">
                     <span>{selectedFile.name}</span>
@@ -256,17 +271,15 @@ function ConstructionHistory({ projectName, onBack }) {
               <p className="upload-hint">
                 Formatos: JPG, PNG (Máx: 10MB)
               </p>
-            
             </div>
         </div>
         
       </div>
     );
   }
-  // --- FIM DA CORREÇÃO ---
 
 
-  // Este é o bloco renderizado QUANDO HÁ imagens
+  // Bloco principal 'com imagens'
   return (
     <div className="history-container">
       <header className="history-header">
@@ -287,12 +300,24 @@ function ConstructionHistory({ projectName, onBack }) {
       <div className="history-content">
         <div className="image-section">
           <div className={`image-container ${showComparison ? 'comparison-mode' : ''}`}>
+            
+            {/* --- IMAGEM 1: ORIGINAL --- */}
             <div className={`image-wrapper`}>
               <img
                 src={currentImage.url}
                 alt={`Obra ${formatDate(currentImage.date)}`}
                 className="construction-image"
               />
+
+              {/* Overlay BIM (IMAGEM 1) */}
+              {showBimOverlay && bimPlanImage && (
+                <img
+                  src={bimPlanImage}
+                  alt="Overlay do Plano BIM"
+                  className="bim-overlay-image" 
+                />
+              )}
+
               {!showComparison && (
                 <>
                   <button className="nav-button prev-button" onClick={handlePrev}>‹</button>
@@ -302,6 +327,7 @@ function ConstructionHistory({ projectName, onBack }) {
               <div className="image-label">Original</div>
             </div>
 
+            {/* --- IMAGEM 2: ANÁLISE IA --- */}
             {showComparison && aiProcessedImage && (
               <div className="image-wrapper">
                 <img
@@ -309,6 +335,9 @@ function ConstructionHistory({ projectName, onBack }) {
                   alt={`Processado por IA ${formatDate(currentImage.date)}`}
                   className="construction-image"
                 />
+                
+                {/* --- MUDANÇA: O Overlay BIM foi REMOVIDO daqui --- */}
+
                 <div className="image-label">Análise IA</div>
               </div>
             )}
@@ -334,6 +363,18 @@ function ConstructionHistory({ projectName, onBack }) {
                     {isApplyingAI ? '🔄 Aplicando IA...' : 
                       showComparison ? '🔄 Nova Análise' : '🤖 Aplicar IA'}
                   </button>
+
+                  {/* Botão de Toggle do Overlay BIM (funciona em ambos os modos) */}
+                  {bimPlanImage && (
+                    <button 
+                      className={`bim-overlay-btn ${showBimOverlay ? 'comparison-active' : ''}`}
+                      onClick={() => setShowBimOverlay(!showBimOverlay)}
+                      title="Sobrepor plano BIM"
+                    >
+                      BIM
+                    </button>
+                  )}
+
                   {showComparison && (
                     <button 
                       className="close-comparison-btn"
