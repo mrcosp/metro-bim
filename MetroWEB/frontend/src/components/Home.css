@@ -1098,3 +1098,116 @@
     font-size: 0.9rem;
   }
 }
+
+.home-main.right-scroll {
+  overflow-y: auto;
+  max-height: calc(100vh - 80px);
+  padding-right: 8px;
+}
+
+.home-main.right-scroll::-webkit-scrollbar {
+  width: 8px;
+}
+
+.home-main.right-scroll::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 4px;
+}
+
+.home-main.right-scroll::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 4px;
+}
+
+.home-main.right-scroll::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
+}
+
+.home-main.right-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: #c1c1c1 #f1f1f1;
+}
+
+.folder-actions {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  display: flex;
+  gap: 0.3rem;
+  opacity: 0;
+  transition: all 0.3s ease;
+  z-index: 3;
+}
+
+.folder-item:hover .folder-actions {
+  opacity: 1;
+}
+
+.folder-edit-button,
+.folder-delete-button {
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid #e1e5e9;
+  cursor: pointer;
+  font-size: 0.9rem;
+  padding: 0.3rem 0.5rem;
+  border-radius: 4px;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+.folder-edit-button:hover {
+  background: #001871;
+  color: white;
+  transform: scale(1.1);
+}
+
+.folder-delete-button:hover {
+  background: #dc3545;
+  color: white;
+  transform: scale(1.1);
+}
+
+.modal-btn.delete-btn {
+  background: linear-gradient(135deg, #dc3545, #c82333);
+  color: white;
+  border: 1px solid #dc3545;
+}
+
+.modal-btn.delete-btn:hover {
+  background: linear-gradient(135deg, #c82333, #a71e2a);
+  transform: translateY(-1px);
+}
+
+.warning-text {
+  color: #dc3545;
+  font-weight: 600;
+  margin-top: 1rem;
+  text-align: center;
+  font-size: 0.9rem;
+}
+
+@media (max-width: 768px) {
+  .folder-actions {
+    opacity: 1; 
+  }
+  
+  .folder-edit-button,
+  .folder-delete-button {
+    min-height: 35px;
+    min-width: 35px;
+    font-size: 0.8rem;
+  }
+}
+
+@media (hover: none) and (pointer: coarse) {
+  .folder-actions {
+    opacity: 1;
+  }
+  
+  .folder-edit-button,
+  .folder-delete-button {
+    min-height: 40px;
+    min-width: 40px;
+    font-size: 1rem;
+  }
+}

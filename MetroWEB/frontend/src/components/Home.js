@@ -12,6 +12,12 @@ function Home({ onLogout }) {
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [selectedProject, setSelectedProject] = useState(null);
 
+  // --- NOVO: Estados para deletar e editar pastas ---
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [folderToDelete, setFolderToDelete] = useState(null);
+  const [folderToEdit, setFolderToEdit] = useState(null);
+
   // --- MUDANÇA: Novo estado para o dropdown de áreas do IFC ---
   const [ifcAreas, setIfcAreas] = useState([]);
   const [ifcAreaError, setIfcAreaError] = useState(null);
@@ -19,17 +25,24 @@ function Home({ onLogout }) {
 
   const [projectData, setProjectData] = useState({
     name: '',
-    // --- MUDANÇA: Novo campo para o <select> ---
     ifcAreaName: '', 
     description: '',
-    // (Campos do seu formulário antigo)
     totalArea: '',
     startDate: '',
     expectedCompletion: '',
     responsible: ''
   });
 
-  // (Estados do seu modal de perfil)
+  // --- NOVO: Estado para dados de edição ---
+  const [editData, setEditData] = useState({
+    name: '',
+    description: '',
+    totalArea: '',
+    startDate: '',
+    expectedCompletion: '',
+    responsible: ''
+  });
+
   const [userProfile, setUserProfile] = useState({
     name: 'Usuário',
     email: 'usuario@exemplo.com',
@@ -45,7 +58,7 @@ function Home({ onLogout }) {
   useEffect(() => {
     async function fetchFolders() {
       try {
-        const response = await fetch('/api/folders'); // (URL relativa é melhor)
+        const response = await fetch('/api/folders');
         const data = await response.json();
         setFolders(data);
       } catch (err) {
@@ -58,11 +71,10 @@ function Home({ onLogout }) {
 
   // --- MUDANÇA: Novo useEffect para buscar as áreas do IFC ---
   useEffect(() => {
-    // Busca as áreas do IFC apenas quando o modal for aberto
     if (showNewProjectModal) {
       async function fetchIfcAreas() {
-        setIsLoadingIfcAreas(true); // Mostra "Carregando..."
-        setIfcAreaError(null); // Limpa erros antigos
+        setIsLoadingIfcAreas(true);
+        setIfcAreaError(null);
         try {
           const res = await fetch('/api/ifc/areas');
           if (!res.ok) {
@@ -75,12 +87,12 @@ function Home({ onLogout }) {
           console.error(err);
           setIfcAreaError(err.message);
         } finally {
-          setIsLoadingIfcAreas(false); // Para de carregar
+          setIsLoadingIfcAreas(false);
         }
       }
       fetchIfcAreas();
     }
-  }, [showNewProjectModal]); // Roda toda vez que o modal é aberto
+  }, [showNewProjectModal]);
 
   const loadUserProfile = async () => {
     try {
@@ -101,7 +113,7 @@ function Home({ onLogout }) {
     }
   };
 
-  const handleImageUpload = async (event) => { /* ... (Seu código - sem mudanças) ... */ 
+  const handleImageUpload = async (event) => { 
     const file = event.target.files[0];
     if (!file) return;
     if (!file.type.startsWith('image/')) {
@@ -133,7 +145,7 @@ function Home({ onLogout }) {
     }
   };
 
-  const handleRemoveImage = () => { /* ... (Seu código - sem mudanças) ... */ 
+  const handleRemoveImage = () => { 
     setProfileImage(null);
     localStorage.removeItem('userProfileImage');
     setUploadStatus('Foto removida com sucesso!');
@@ -144,22 +156,81 @@ function Home({ onLogout }) {
     folder.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const handleFolderNameEdit = (id, newName) => { /* ... (Seu código - sem mudanças) ... */ 
-    if (newName.trim() !== '') {
-      setFolders(folders.map(folder => 
-        folder.id === id ? { ...folder, name: newName, isEditing: false } : folder
-      ));
-    } else {
-      setFolders(folders.map(folder => 
-        folder.id === id ? { ...folder, isEditing: false } : folder
-      ));
+  // --- NOVO: Função para abrir modal de confirmação de exclusão ---
+  const confirmDelete = (folder, e) => {
+    e.stopPropagation();
+    setFolderToDelete(folder);
+    setShowDeleteModal(true);
+  };
+
+  // --- NOVO: Função para abrir modal de edição ---
+  const openEditModal = (folder, e) => {
+    e.stopPropagation();
+    setFolderToEdit(folder);
+    setEditData({
+      name: folder.name,
+      description: folder.description || '',
+      totalArea: folder.totalArea || '',
+      startDate: folder.startDate || '',
+      expectedCompletion: folder.expectedCompletion || '',
+      responsible: folder.responsible || ''
+    });
+    setShowEditModal(true);
+  };
+
+  // --- NOVO: Função para deletar pasta ---
+  const handleDeleteFolder = async () => {
+    if (!folderToDelete) return;
+    
+    try {
+      const response = await fetch(`/api/folders/${folderToDelete.id}`, {
+        method: 'DELETE',
+      });
+      
+      if (response.ok) {
+        setFolders(folders.filter(folder => folder.id !== folderToDelete.id));
+        setShowDeleteModal(false);
+        setFolderToDelete(null);
+        console.log(`Pasta ${folderToDelete.name} deletada com sucesso`);
+      } else {
+        console.error('Erro ao deletar pasta');
+        alert('Erro ao deletar pasta');
+      }
+    } catch (error) {
+      console.error('Erro ao deletar pasta:', error);
+      alert('Erro ao deletar pasta');
     }
   };
 
-  const startEditing = (id) => { /* ... (Seu código - sem mudanças) ... */ 
-    setFolders(folders.map(folder => 
-      folder.id === id ? { ...folder, isEditing: true } : folder
-    ));
+  // --- NOVO: Função para editar pasta ---
+  const handleEditFolder = async () => {
+    if (!folderToEdit) return;
+    
+    try {
+      const response = await fetch(`/api/folders/${folderToEdit.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(editData)
+      });
+      
+      if (response.ok) {
+        // Atualiza a lista de pastas localmente
+        setFolders(folders.map(folder => 
+          folder.id === folderToEdit.id ? { ...folder, ...editData } : folder
+        ));
+        setShowEditModal(false);
+        setFolderToEdit(null);
+        console.log(`Pasta ${folderToEdit.name} atualizada com sucesso`);
+      } else {
+        console.error('Erro ao editar pasta');
+        alert('Erro ao editar pasta');
+      }
+    } catch (error) {
+      console.error('Erro ao editar pasta:', error);
+      alert('Erro ao editar pasta');
+    }
   };
 
   const handleInputChange = (e) => {
@@ -170,9 +241,16 @@ function Home({ onLogout }) {
     }));
   };
 
-  // --- MUDANÇA: handleCreateNewProject agora envia 'ifcAreaName' ---
+  // --- NOVO: Função para mudar dados de edição ---
+  const handleEditInputChange = (e) => {
+    const { name, value } = e.target;
+    setEditData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
   const handleCreateNewProject = async () => {
-    // Validação
     if (projectData.name.trim() === '') {
         alert("O nome do projeto é obrigatório.");
         return;
@@ -183,41 +261,27 @@ function Home({ onLogout }) {
     }
   
     try {
-      // (Usa a rota /api/captures/upload que você corrigiu)
       const res = await fetch('/api/captures/upload', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          
-          folder: projectData.name, // O nome amigável
+          folder: projectData.name,
           nomeObra: projectData.name,
-          ifcAreaName: projectData.ifcAreaName, // O nome técnico do IFC
-          
+          ifcAreaName: projectData.ifcAreaName,
           descricao: projectData.description || 'Projeto criado via web',
-          imageBase64: null, // Indica que é uma criação de pasta
-          
-          // (Dados que o seu 'main' enviava)
+          imageBase64: null,
           gps: {},
           orientacao: {},
-          
-          // (Estes campos não são usados no backend de criação de pasta,
-          //  mas podemos enviá-los se o schema 'Image' os aceitar)
-          // totalArea: projectData.totalArea,
-          // startDate: projectData.startDate,
-          // expectedCompletion: projectData.expectedCompletion,
-          // responsible: projectData.responsible
         })
       });
   
       const responseData = await res.json();
 
       if (res.ok) {
-        // Atualiza a lista de pastas
         const foldersRes = await fetch('/api/folders');
         const foldersData = await foldersRes.json();
         setFolders(foldersData);
         
-        // Limpa o formulário e fecha o modal
         setProjectData({
           name: '',
           ifcAreaName: '',
@@ -242,10 +306,157 @@ function Home({ onLogout }) {
     return date.toLocaleDateString('pt-BR');
   };
 
+  // --- NOVO: Modal de Confirmação de Exclusão ---
+  const DeleteConfirmationModal = () => (
+    <div className="modal-overlay" onClick={() => setShowDeleteModal(false)}>
+      <div className="modal" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-header">
+          <h3>Confirmar exclusão</h3>
+          <button 
+            className="modal-close"
+            onClick={() => setShowDeleteModal(false)}
+          >
+            ×
+          </button>
+        </div>
+        
+        <div className="modal-body">
+          <p>Tem certeza que deseja excluir a pasta <strong>"{folderToDelete?.name}"</strong>?</p>
+          <p className="warning-text">⚠️ Esta ação não pode ser desfeita.</p>
+        </div>
+        
+        <div className="modal-footer">
+          <button 
+            className="modal-btn cancel1"
+            onClick={() => setShowDeleteModal(false)}
+          >
+            Cancelar
+          </button>
+          <button 
+            className="modal-btn delete-btn"
+            onClick={handleDeleteFolder}
+          >
+            🗑️ Excluir
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
+  // --- NOVO: Modal de Edição ---
+  const EditModal = () => (
+    <div className="modal-overlay" onClick={() => setShowEditModal(false)}>
+      <div className="modal large-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-header">
+          <h3>Editar projeto</h3>
+          <button 
+            className="modal-close"
+            onClick={() => setShowEditModal(false)}
+          >
+            ×
+          </button>
+        </div>
+        
+        <div className="modal-body">
+          <div className="form-grid">
+            <div className="form-group">
+              <label htmlFor="edit-name">Nome do projeto *</label>
+              <input
+                type="text"
+                id="edit-name"
+                name="name"
+                value={editData.name}
+                onChange={handleEditInputChange}
+                placeholder="Nome do projeto"
+                className="modal-input"
+                autoFocus
+              />
+            </div>
+
+            <div className="form-group span-two">
+              <label htmlFor="edit-description">Descrição</label>
+              <textarea
+                id="edit-description"
+                name="description"
+                value={editData.description}
+                onChange={handleEditInputChange}
+                placeholder="Descreva o projeto..."
+                className="modal-textarea"
+                rows="3"
+              />
+            </div>
+            
+            <div className="form-group">
+              <label htmlFor="edit-total-area">Área total (m²)</label>
+              <input
+                type="text"
+                id="edit-total-area"
+                name="totalArea"
+                value={editData.totalArea}
+                onChange={handleEditInputChange}
+                placeholder="Ex: 15.000"
+                className="modal-input"
+              />
+            </div>
+            <div className="form-group">
+              <label htmlFor="edit-start-date">Data de início</label>
+              <input
+                type="date"
+                id="edit-start-date"
+                name="startDate"
+                value={editData.startDate}
+                onChange={handleEditInputChange}
+                className="modal-input"
+              />
+            </div>
+            <div className="form-group">
+              <label htmlFor="edit-expected-completion">Previsão de término</label>
+              <input
+                type="date"
+                id="edit-expected-completion"
+                name="expectedCompletion"
+                value={editData.expectedCompletion}
+                onChange={handleEditInputChange}
+                className="modal-input"
+              />
+            </div>
+            <div className="form-group">
+              <label htmlFor="edit-responsible">Responsável</label>
+              <input
+                type="text"
+                id="edit-responsible"
+                name="responsible"
+                value={editData.responsible}
+                onChange={handleEditInputChange}
+                placeholder="Nome do responsável"
+                className="modal-input"
+              />
+            </div>
+          </div>
+        </div>
+        
+        <div className="modal-footer">
+          <button 
+            className="modal-btn cancel1"
+            onClick={() => setShowEditModal(false)}
+          >
+            Cancelar
+          </button>
+          <button 
+            className="modal-btn confirm1"
+            onClick={handleEditFolder}
+            disabled={!editData.name.trim()}
+          >
+            💾 Salvar Alterações
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
   const ProfileModal = () => (
     <div className="modal-overlay" onClick={() => setShowProfileModal(false)}>
       <div className="modal profile-modal" onClick={(e) => e.stopPropagation()}>
-        {/* ... (Seu JSX do Modal de Perfil - sem mudanças) ... */}
         <div className="modal-header">
           <h3>Meu perfil</h3>
           <button 
@@ -337,7 +548,6 @@ function Home({ onLogout }) {
             </div>
           </div>
         </div>
-        
       </div>
     </div>
   );
@@ -356,7 +566,6 @@ function Home({ onLogout }) {
     );
   }
 
-  // (Componente principal HOME)
   return (
     <div className="home-container">
       <header className="home-header">
@@ -408,7 +617,8 @@ function Home({ onLogout }) {
         </div>
       </header>
 
-      <main className="home-main">
+      {/* --- MUDANÇA: Adicionado scroll no canto direito --- */}
+      <main className="home-main right-scroll">
         <div className="toolbar">
           <div className="search-container">
             <input
@@ -435,7 +645,7 @@ function Home({ onLogout }) {
         <div className="folders-grid">
           {filteredFolders.map(folder => (
             <div 
-              key={folder.id || folder.name} // (Usa 'name' como fallback)
+              key={folder.id || folder.name}
               className="folder-item"
               onClick={() => {
                 setSelectedProject(folder);
@@ -447,46 +657,36 @@ function Home({ onLogout }) {
               </div>
               
               <div className="folder-content">
-                {folder.isEditing ? (
-                  <input
-                    type="text"
-                    value={folder.name}
-                    onChange={(e) => handleFolderNameEdit(folder.id, e.target.value)}
-                    onBlur={() => handleFolderNameEdit(folder.id, folder.name)}
-                    onKeyPress={(e) => e.key === 'Enter' && handleFolderNameEdit(folder.id, folder.name)} // (Corrigido para 'onKeyPress')
-                    className="folder-name-input"
-                    autoFocus
-                    onClick={(e) => e.stopPropagation()} 
-                  />
-                ) : (
-                  <div 
-                    className="folder-name"
-                    onDoubleClick={(e) => {
-                      e.stopPropagation(); 
-                      // startEditing(folder.id); // (Desabilitado pois 'id' pode não existir ainda)
-                    }}
-                    title="Nome da pasta" // (Removido 'Duplo clique')
-                  >
-                    {folder.name}
-                  </div>
-                )}
+                <div 
+                  className="folder-name"
+                  title="Nome da pasta"
+                >
+                  {folder.name}
+                </div>
                 
                 <div className="folder-date">
                   {formatDate(folder.date)}
                 </div>
               </div>
               
-              <button 
-                className="folder-edit-button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  // startEditing(folder.id); // (Desabilitado)
-                }}
-                title="Editar nome"
-                style={{display: 'none'}} // (Esconde o botão de editar)
-              >
-                ✏️
-              </button>
+              {/* --- MUDANÇA: Botões de editar e deletar lado a lado --- */}
+              <div className="folder-actions">
+                <button 
+                  className="folder-edit-button"
+                  onClick={(e) => openEditModal(folder, e)}
+                  title="Editar projeto"
+                >
+                  ✏️
+                </button>
+                
+                <button 
+                  className="folder-delete-button"
+                  onClick={(e) => confirmDelete(folder, e)}
+                  title="Excluir pasta"
+                >
+                  🗑️
+                </button>
+              </div>
             </div>
           ))}
         </div>
@@ -498,7 +698,6 @@ function Home({ onLogout }) {
         )}
       </main>
 
-      {/* --- MUDANÇA: O Modal de Novo Projeto agora tem o dropdown --- */}
       {showNewProjectModal && (
         <div className="modal-overlay" onClick={(e) => {
           if (e.target === e.currentTarget) {
@@ -523,13 +722,12 @@ function Home({ onLogout }) {
             <div className="modal-body">
               <div className="form-grid">
                 
-                {/* Campo 1: Nome do Projeto (Amigável) */}
                 <div className="form-group">
                   <label htmlFor="project-name">Nome do projeto (Pasta) *</label>
                   <input
                     type="text"
                     id="project-name"
-                    name="name" // O nome do campo no estado
+                    name="name"
                     value={projectData.name}
                     onChange={handleInputChange}
                     placeholder="Ex: Plataforma - Inspeção 1"
@@ -538,12 +736,11 @@ function Home({ onLogout }) {
                   />
                 </div>
 
-                {/* Campo 2: Área do BIM (O "Tradutor") */}
                 <div className="form-group">
                   <label htmlFor="ifc-area">Área do BIM correspondente *</label>
                   <select
                     id="ifc-area"
-                    name="ifcAreaName" // O nome do campo no estado
+                    name="ifcAreaName"
                     value={projectData.ifcAreaName}
                     onChange={handleInputChange}
                     className="modal-input"
@@ -563,7 +760,6 @@ function Home({ onLogout }) {
                   </select>
                 </div>
                 
-                {/* Campo 3: Descrição */}
                 <div className="form-group span-two">
                   <label htmlFor="project-description">Descrição</label>
                   <textarea
@@ -577,7 +773,6 @@ function Home({ onLogout }) {
                   />
                 </div>
                 
-                {/* (Seus outros campos - mantidos) */}
                 <div className="form-group">
                   <label htmlFor="total-area">Área total (m²)</label>
                   <input
@@ -649,6 +844,12 @@ function Home({ onLogout }) {
           </div>
         </div>
       )}
+
+      {/* --- NOVO: Modal de Confirmação de Exclusão --- */}
+      {showDeleteModal && <DeleteConfirmationModal />}
+
+      {/* --- NOVO: Modal de Edição --- */}
+      {showEditModal && <EditModal />}
 
       {/* Modal de Perfil */}
       {showProfileModal && <ProfileModal />}
