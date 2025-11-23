@@ -12,13 +12,11 @@ function Home({ onLogout }) {
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [selectedProject, setSelectedProject] = useState(null);
 
-  // --- NOVO: Estados para deletar e editar pastas ---
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [folderToDelete, setFolderToDelete] = useState(null);
   const [folderToEdit, setFolderToEdit] = useState(null);
 
-  // --- MUDANÇA: Novo estado para o dropdown de áreas do IFC ---
   const [ifcAreas, setIfcAreas] = useState([]);
   const [ifcAreaError, setIfcAreaError] = useState(null);
   const [isLoadingIfcAreas, setIsLoadingIfcAreas] = useState(false);
@@ -33,14 +31,8 @@ function Home({ onLogout }) {
     responsible: ''
   });
 
-  // --- NOVO: Estado para dados de edição ---
   const [editData, setEditData] = useState({
-    name: '',
-    description: '',
-    totalArea: '',
-    startDate: '',
-    expectedCompletion: '',
-    responsible: ''
+    name: ''
   });
 
   const [userProfile, setUserProfile] = useState({
@@ -54,7 +46,6 @@ function Home({ onLogout }) {
   const [isUploading, setIsUploading] = useState(false);
   const [uploadStatus, setUploadStatus] = useState('');
 
-  // Busca as pastas quando o componente carrega
   useEffect(() => {
     async function fetchFolders() {
       try {
@@ -69,7 +60,6 @@ function Home({ onLogout }) {
     loadUserProfile();
   }, []);
 
-  // --- MUDANÇA: Novo useEffect para buscar as áreas do IFC ---
   useEffect(() => {
     if (showNewProjectModal) {
       async function fetchIfcAreas() {
@@ -156,29 +146,21 @@ function Home({ onLogout }) {
     folder.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  // --- NOVO: Função para abrir modal de confirmação de exclusão ---
   const confirmDelete = (folder, e) => {
     e.stopPropagation();
     setFolderToDelete(folder);
     setShowDeleteModal(true);
   };
 
-  // --- NOVO: Função para abrir modal de edição ---
   const openEditModal = (folder, e) => {
     e.stopPropagation();
     setFolderToEdit(folder);
     setEditData({
-      name: folder.name,
-      description: folder.description || '',
-      totalArea: folder.totalArea || '',
-      startDate: folder.startDate || '',
-      expectedCompletion: folder.expectedCompletion || '',
-      responsible: folder.responsible || ''
+      name: folder.name
     });
     setShowEditModal(true);
   };
 
-  // --- NOVO: Função para deletar pasta ---
   const handleDeleteFolder = async () => {
     if (!folderToDelete) return;
     
@@ -202,7 +184,6 @@ function Home({ onLogout }) {
     }
   };
 
-  // --- NOVO: Função para editar pasta ---
   const handleEditFolder = async () => {
     if (!folderToEdit) return;
     
@@ -216,7 +197,6 @@ function Home({ onLogout }) {
       });
       
       if (response.ok) {
-        // Atualiza a lista de pastas localmente
         setFolders(folders.map(folder => 
           folder.id === folderToEdit.id ? { ...folder, ...editData } : folder
         ));
@@ -241,7 +221,6 @@ function Home({ onLogout }) {
     }));
   };
 
-  // --- NOVO: Função para mudar dados de edição ---
   const handleEditInputChange = (e) => {
     const { name, value } = e.target;
     setEditData(prev => ({
@@ -306,7 +285,6 @@ function Home({ onLogout }) {
     return date.toLocaleDateString('pt-BR');
   };
 
-  // --- NOVO: Modal de Confirmação de Exclusão ---
   const DeleteConfirmationModal = () => (
     <div className="modal-overlay" onClick={() => setShowDeleteModal(false)}>
       <div className="modal" onClick={(e) => e.stopPropagation()}>
@@ -343,12 +321,11 @@ function Home({ onLogout }) {
     </div>
   );
 
-  // --- NOVO: Modal de Edição ---
   const EditModal = () => (
     <div className="modal-overlay" onClick={() => setShowEditModal(false)}>
-      <div className="modal large-modal" onClick={(e) => e.stopPropagation()}>
+      <div className="modal" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
-          <h3>Editar projeto</h3>
+          <h3>Editar nome da pasta</h3>
           <button 
             className="modal-close"
             onClick={() => setShowEditModal(false)}
@@ -358,80 +335,18 @@ function Home({ onLogout }) {
         </div>
         
         <div className="modal-body">
-          <div className="form-grid">
-            <div className="form-group">
-              <label htmlFor="edit-name">Nome do projeto *</label>
-              <input
-                type="text"
-                id="edit-name"
-                name="name"
-                value={editData.name}
-                onChange={handleEditInputChange}
-                placeholder="Nome do projeto"
-                className="modal-input"
-                autoFocus
-              />
-            </div>
-
-            <div className="form-group span-two">
-              <label htmlFor="edit-description">Descrição</label>
-              <textarea
-                id="edit-description"
-                name="description"
-                value={editData.description}
-                onChange={handleEditInputChange}
-                placeholder="Descreva o projeto..."
-                className="modal-textarea"
-                rows="3"
-              />
-            </div>
-            
-            <div className="form-group">
-              <label htmlFor="edit-total-area">Área total (m²)</label>
-              <input
-                type="text"
-                id="edit-total-area"
-                name="totalArea"
-                value={editData.totalArea}
-                onChange={handleEditInputChange}
-                placeholder="Ex: 15.000"
-                className="modal-input"
-              />
-            </div>
-            <div className="form-group">
-              <label htmlFor="edit-start-date">Data de início</label>
-              <input
-                type="date"
-                id="edit-start-date"
-                name="startDate"
-                value={editData.startDate}
-                onChange={handleEditInputChange}
-                className="modal-input"
-              />
-            </div>
-            <div className="form-group">
-              <label htmlFor="edit-expected-completion">Previsão de término</label>
-              <input
-                type="date"
-                id="edit-expected-completion"
-                name="expectedCompletion"
-                value={editData.expectedCompletion}
-                onChange={handleEditInputChange}
-                className="modal-input"
-              />
-            </div>
-            <div className="form-group">
-              <label htmlFor="edit-responsible">Responsável</label>
-              <input
-                type="text"
-                id="edit-responsible"
-                name="responsible"
-                value={editData.responsible}
-                onChange={handleEditInputChange}
-                placeholder="Nome do responsável"
-                className="modal-input"
-              />
-            </div>
+          <div className="form-group">
+            <label htmlFor="edit-name">Nome da pasta *</label>
+            <input
+              type="text"
+              id="edit-name"
+              name="name"
+              value={editData.name}
+              onChange={handleEditInputChange}
+              placeholder="Nome da pasta"
+              className="modal-input"
+              autoFocus
+            />
           </div>
         </div>
         
@@ -447,7 +362,7 @@ function Home({ onLogout }) {
             onClick={handleEditFolder}
             disabled={!editData.name.trim()}
           >
-            💾 Salvar Alterações
+            💾 Salvar alterações
           </button>
         </div>
       </div>
@@ -617,7 +532,6 @@ function Home({ onLogout }) {
         </div>
       </header>
 
-      {/* --- MUDANÇA: Adicionado scroll no canto direito --- */}
       <main className="home-main right-scroll">
         <div className="toolbar">
           <div className="search-container">
@@ -669,14 +583,13 @@ function Home({ onLogout }) {
                 </div>
               </div>
               
-              {/* --- MUDANÇA: Botões de editar e deletar lado a lado --- */}
               <div className="folder-actions">
                 <button 
                   className="folder-edit-button"
                   onClick={(e) => openEditModal(folder, e)}
                   title="Editar projeto"
                 >
-                  ✏️
+                  <span>✏️</span>
                 </button>
                 
                 <button 
@@ -684,7 +597,7 @@ function Home({ onLogout }) {
                   onClick={(e) => confirmDelete(folder, e)}
                   title="Excluir pasta"
                 >
-                  🗑️
+                  <span>🗑️</span>
                 </button>
               </div>
             </div>
@@ -845,13 +758,10 @@ function Home({ onLogout }) {
         </div>
       )}
 
-      {/* --- NOVO: Modal de Confirmação de Exclusão --- */}
       {showDeleteModal && <DeleteConfirmationModal />}
 
-      {/* --- NOVO: Modal de Edição --- */}
       {showEditModal && <EditModal />}
 
-      {/* Modal de Perfil */}
       {showProfileModal && <ProfileModal />}
     </div>
   );
