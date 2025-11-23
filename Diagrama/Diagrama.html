@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Monitoramento de Obras com IA</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1a2a6c, #2a3c7a);
+            color: white;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            background: linear-gradient(45deg, #00c6ff, #0072ff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .architecture-flow {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 40px;
+        }
+
+        .flow-step {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .flow-step:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(0, 114, 255, 0.3);
+        }
+
+        .step-number {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: #0072ff;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+        }
+
+        .step-title {
+            font-size: 1.3em;
+            margin-bottom: 15px;
+            color: #00c6ff;
+            border-bottom: 2px solid #00c6ff;
+            padding-bottom: 5px;
+        }
+
+        .step-content {
+            line-height: 1.6;
+        }
+
+        .tech-badge {
+            display: inline-block;
+            background: rgba(0, 198, 255, 0.2);
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 0.8em;
+            margin: 2px;
+            border: 1px solid #00c6ff;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+
+        .pulse {
+            animation: pulse 2s infinite;
+        }
+
+        .ai-visualization {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 10px;
+            padding: 15px;
+            margin-top: 10px;
+        }
+
+        .image-comparison {
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .image-box {
+            text-align: center;
+        }
+
+        .image-placeholder {
+            width: 120px;
+            height: 120px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px dashed #00c6ff;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 10px;
+        }
+
+        .material-mask {
+            background: linear-gradient(45deg, #ff6b6b, #4ecdc4, #45b7d1, #96ceb4);
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            margin: 10px 0;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #00c6ff, #0072ff);
+            border-radius: 10px;
+            transition: width 1s ease-in-out;
+            width: 0%;
+        }
+
+        .ar-view {
+            background: rgba(0, 198, 255, 0.1);
+            border: 2px solid #00c6ff;
+            border-radius: 10px;
+            padding: 15px;
+            text-align: center;
+            margin-top: 20px;
+        }
+
+        .cube {
+            width: 60px;
+            height: 60px;
+            margin: 10px auto;
+            position: relative;
+            transform-style: preserve-3d;
+            animation: rotate 5s infinite linear;
+        }
+
+        .face {
+            position: absolute;
+            width: 60px;
+            height: 60px;
+            background: rgba(0, 198, 255, 0.6);
+            border: 1px solid #00c6ff;
+        }
+
+        .front { transform: translateZ(30px); }
+        .back { transform: translateZ(-30px); }
+        .left { transform: rotateY(-90deg) translateZ(30px); }
+        .right { transform: rotateY(90deg) translateZ(30px); }
+        .top { transform: rotateX(90deg) translateZ(30px); }
+        .bottom { transform: rotateX(-90deg) translateZ(30px); }
+
+        @keyframes rotate {
+            0% { transform: rotateX(0) rotateY(0); }
+            100% { transform: rotateX(360deg) rotateY(360deg); }
+        }
+
+        .controls {
+            text-align: center;
+            margin: 30px 0;
+        }
+
+        .btn {
+            background: linear-gradient(45deg, #00c6ff, #0072ff);
+            border: none;
+            padding: 12px 30px;
+            border-radius: 25px;
+            color: white;
+            font-size: 1em;
+            cursor: pointer;
+            transition: transform 0.3s ease;
+        }
+
+        .btn:hover {
+            transform: scale(1.05);
+        }
+
+        @media (max-width: 768px) {
+            .architecture-flow {
+                grid-template-columns: 1fr;
+            }
+            
+            .header h1 {
+                font-size: 2em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🏗️ Sistema de Monitoramento de Obras com IA</h1>
+            <p>Arquitetura integrada com BIM, IA e Realidade Aumentada</p>
+        </div>
+
+        <div class="controls">
+            <button class="btn" onclick="startDemo()">▶️ Iniciar Demonstração</button>
+            <button class="btn" onclick="resetDemo()">🔄 Reiniciar</button>
+        </div>
+
+        <div class="architecture-flow">
+            <div class="flow-step" id="step1">
+                <div class="step-number">1</div>
+                <div class="step-title">📱 Captura Mobile</div>
+                <div class="step-content">
+                    <p>Imagens são capturadas no canteiro de obras via aplicativo mobile</p>
+                    <span class="tech-badge">ARCore</span>
+                    <span class="tech-badge">Mobile App</span>
+                    <div class="image-placeholder" id="mobile-capture">
+                        📸
+                    </div>
+                </div>
+            </div>
+
+            <div class="flow-step" id="step2">
+                <div class="step-number">2</div>
+                <div class="step-title">🤖 Processamento com IA</div>
+                <div class="step-content">
+                    <p>Segmentação semântica com DeepLabV3+</p>
+                    <span class="tech-badge">DeepLabV3+</span>
+                    <span class="tech-badge">Segmentação</span>
+                    
+                    <div class="ai-visualization">
+                        <div class="image-comparison">
+                            <div class="image-box">
+                                <div class="image-placeholder">
+                                    🏗️
+                                </div>
+                                <small>Imagem Real</small>
+                            </div>
+                            <div class="image-box">
+                                <div class="image-placeholder material-mask" id="ai-mask">
+                                    🎨
+                                </div>
+                                <small>Máscara IA</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flow-step" id="step3">
+                <div class="step-number">3</div>
+                <div class="step-title">📊 Integração BIM</div>
+                <div class="step-content">
+                    <p>Modelo IFC como referência para comparação</p>
+                    <span class="tech-badge">IFC</span>
+                    <span class="tech-badge">BIM</span>
+                    
+                    <div class="image-placeholder" id="bim-model">
+                        🏢
+                    </div>
+                    
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="bim-progress"></div>
+                    </div>
+                    <small>Baseline: 100% planejado</small>
+                </div>
+            </div>
+
+            <div class="flow-step" id="step4">
+                <div class="step-number">4</div>
+                <div class="step-title">📈 Cálculo de Progresso</div>
+                <div class="step-content">
+                    <p>Comparação pixel a pixel entre real e planejado</p>
+                    
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="progress-calc"></div>
+                    </div>
+                    <small id="progress-text">Progresso: 0%</small>
+                    
+                    <div style="margin-top: 15px;">
+                        <div style="display: flex; justify-content: space-between; font-size: 0.8em;">
+                            <span>🔴 Concreto: <span id="concrete">0%</span></span>
+                            <span>🔵 Aço: <span id="steel">0%</span></span>
+                            <span>🟢 Deck: <span id="deck">0%</span></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flow-step" id="step5">
+                <div class="step-number">5</div>
+                <div class="step-title">👓 Realidade Aumentada</div>
+                <div class="step-content">
+                    <p>Visualização do modelo BIM sobreposto ao ambiente real</p>
+                    <span class="tech-badge">ARCore</span>
+                    <span class="tech-badge">3D</span>
+                    
+                    <div class="ar-view">
+                        <div class="cube">
+                            <div class="face front"></div>
+                            <div class="face back"></div>
+                            <div class="face left"></div>
+                            <div class="face right"></div>
+                            <div class="face top"></div>
+                            <div class="face bottom"></div>
+                        </div>
+                        <p>Modelo BIM em RA</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function startDemo() {
+            resetDemo();
+            
+            setTimeout(() => {
+                document.getElementById('step1').classList.add('pulse');
+                document.getElementById('mobile-capture').style.background = 'rgba(0, 198, 255, 0.3)';
+            }, 500);
+
+            setTimeout(() => {
+                document.getElementById('step1').classList.remove('pulse');
+                document.getElementById('step2').classList.add('pulse');
+                document.getElementById('ai-mask').style.animation = 'pulse 1s infinite';
+            }, 2000);
+
+            setTimeout(() => {
+                document.getElementById('step2').classList.remove('pulse');
+                document.getElementById('step3').classList.add('pulse');
+                document.getElementById('bim-model').style.background = 'rgba(0, 198, 255, 0.3)';
+                document.getElementById('bim-progress').style.width = '100%';
+            }, 3500);
+
+            setTimeout(() => {
+                document.getElementById('step3').classList.remove('pulse');
+                document.getElementById('step4').classList.add('pulse');
+                
+                const progress = document.getElementById('progress-calc');
+                const progressText = document.getElementById('progress-text');
+                let progressValue = 0;
+                
+                const progressInterval = setInterval(() => {
+                    progressValue += 2;
+                    progress.style.width = progressValue + '%';
+                    progressText.textContent = `Progresso: ${progressValue}%`;
+                    
+                    document.getElementById('concrete').textContent = Math.min(progressValue + 10, 100) + '%';
+                    document.getElementById('steel').textContent = Math.min(progressValue - 5, 95) + '%';
+                    document.getElementById('deck').textContent = Math.min(progressValue + 5, 98) + '%';
+                    
+                    if (progressValue >= 75) {
+                        clearInterval(progressInterval);
+                        document.getElementById('step4').classList.remove('pulse');
+                        document.getElementById('step5').classList.add('pulse');
+                    }
+                }, 50);
+            }, 5000);
+        }
+
+        function resetDemo() {
+            const steps = document.querySelectorAll('.flow-step');
+            steps.forEach(step => {
+                step.classList.remove('pulse');
+            });
+            
+            document.getElementById('bim-progress').style.width = '0%';
+            document.getElementById('progress-calc').style.width = '0%';
+            document.getElementById('progress-text').textContent = 'Progresso: 0%';
+            
+            document.getElementById('concrete').textContent = '0%';
+            document.getElementById('steel').textContent = '0%';
+            document.getElementById('deck').textContent = '0%';
+            
+            // Resetar cores
+            const placeholders = document.querySelectorAll('.image-placeholder');
+            placeholders.forEach(placeholder => {
+                placeholder.style.background = 'rgba(255, 255, 255, 0.1)';
+            });
+            
+            document.getElementById('ai-mask').style.animation = 'none';
+        }
+
+        setTimeout(startDemo, 2000);
+    </script>
+</body>
+</html>
