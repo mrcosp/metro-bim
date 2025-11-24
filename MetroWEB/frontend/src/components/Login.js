@@ -40,7 +40,7 @@ function Login({ onLogin }) {
         return;
       }
 
-      onLogin(data); // Retorna { email, isAdmin }
+      onLogin(data); 
     } catch (err) {
       setError('Não foi possível conectar ao servidor');
       console.error(err);
@@ -59,7 +59,7 @@ function Login({ onLogin }) {
       <div className="login-box">
         <div className="logo-placeholder">
           <div className="metro-logo">
-            <span className="metro-text">METRO</span>
+            <span className="metro-text">METRÔ</span>
             <span className="bim-text"></span>
           </div>
           <p className="logo-subtitle">Análise de obras</p>

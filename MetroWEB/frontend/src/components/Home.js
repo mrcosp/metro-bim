@@ -12,16 +12,16 @@ function Home({ onLogout }) {
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [selectedProject, setSelectedProject] = useState(null);
 
-  // --- NOVO: Estados para deletar e editar pastas ---
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [folderToDelete, setFolderToDelete] = useState(null);
   const [folderToEdit, setFolderToEdit] = useState(null);
 
-  // --- MUDANÇA: Novo estado para o dropdown de áreas do IFC ---
   const [ifcAreas, setIfcAreas] = useState([]);
   const [ifcAreaError, setIfcAreaError] = useState(null);
   const [isLoadingIfcAreas, setIsLoadingIfcAreas] = useState(false);
+
+  const [sortOrder, setSortOrder] = useState('recent'); // 'recent' ou 'old'
 
   const [projectData, setProjectData] = useState({
     name: '',
@@ -33,7 +33,6 @@ function Home({ onLogout }) {
     responsible: ''
   });
 
-  // --- NOVO: Estado para dados de edição ---
   const [editData, setEditData] = useState({
     name: '',
     description: '',
@@ -54,7 +53,6 @@ function Home({ onLogout }) {
   const [isUploading, setIsUploading] = useState(false);
   const [uploadStatus, setUploadStatus] = useState('');
 
-  // Busca as pastas quando o componente carrega
   useEffect(() => {
     async function fetchFolders() {
       try {
@@ -69,7 +67,6 @@ function Home({ onLogout }) {
     loadUserProfile();
   }, []);
 
-  // --- MUDANÇA: Novo useEffect para buscar as áreas do IFC ---
   useEffect(() => {
     if (showNewProjectModal) {
       async function fetchIfcAreas() {
@@ -152,18 +149,33 @@ function Home({ onLogout }) {
     setTimeout(() => setUploadStatus(''), 3000);
   };
 
-  const filteredFolders = folders.filter(folder =>
-    folder.name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const getSortedAndFilteredFolders = () => {
+    let filtered = folders.filter(folder =>
+      folder.name.toLowerCase().includes(searchTerm.toLowerCase())
+    );
 
-  // --- NOVO: Função para abrir modal de confirmação de exclusão ---
+    filtered.sort((a, b) => {
+      const dateA = new Date(a.date || a.createdAt || a.startDate || 0);
+      const dateB = new Date(b.date || b.createdAt || b.startDate || 0);
+      
+      if (sortOrder === 'recent') {
+        return dateB - dateA; 
+      } else {
+        return dateA - dateB; 
+      }
+    });
+
+    return filtered;
+  };
+
+  const filteredFolders = getSortedAndFilteredFolders();
+
   const confirmDelete = (folder, e) => {
     e.stopPropagation();
     setFolderToDelete(folder);
     setShowDeleteModal(true);
   };
 
-  // --- NOVO: Função para abrir modal de edição ---
   const openEditModal = (folder, e) => {
     e.stopPropagation();
     setFolderToEdit(folder);
@@ -178,7 +190,6 @@ function Home({ onLogout }) {
     setShowEditModal(true);
   };
 
-  // --- NOVO: Função para deletar pasta ---
   const handleDeleteFolder = async () => {
     if (!folderToDelete) return;
     
@@ -202,7 +213,6 @@ function Home({ onLogout }) {
     }
   };
 
-  // --- NOVO: Função para editar pasta ---
   const handleEditFolder = async () => {
     if (!folderToEdit) return;
     
@@ -216,7 +226,6 @@ function Home({ onLogout }) {
       });
       
       if (response.ok) {
-        // Atualiza a lista de pastas localmente
         setFolders(folders.map(folder => 
           folder.id === folderToEdit.id ? { ...folder, ...editData } : folder
         ));
@@ -241,7 +250,6 @@ function Home({ onLogout }) {
     }));
   };
 
-  // --- NOVO: Função para mudar dados de edição ---
   const handleEditInputChange = (e) => {
     const { name, value } = e.target;
     setEditData(prev => ({
@@ -306,7 +314,22 @@ function Home({ onLogout }) {
     return date.toLocaleDateString('pt-BR');
   };
 
-  // --- NOVO: Modal de Confirmação de Exclusão ---
+  // COMPONENTE DO FILTRO DE ORDENAÇÃO
+  const SortFilter = () => (
+    <div className="sort-filter">
+      <label htmlFor="sort-order">Ordenar por:</label>
+      <select
+        id="sort-order"
+        value={sortOrder}
+        onChange={(e) => setSortOrder(e.target.value)}
+        className="sort-select"
+      >
+        <option value="recent">Mais recentes</option>
+        <option value="old">Mais antigas</option>
+      </select>
+    </div>
+  );
+
   const DeleteConfirmationModal = () => (
     <div className="modal-overlay" onClick={() => setShowDeleteModal(false)}>
       <div className="modal" onClick={(e) => e.stopPropagation()}>
@@ -343,7 +366,6 @@ function Home({ onLogout }) {
     </div>
   );
 
-  // --- NOVO: Modal de Edição ---
   const EditModal = () => (
     <div className="modal-overlay" onClick={() => setShowEditModal(false)}>
       <div className="modal large-modal" onClick={(e) => e.stopPropagation()}>
@@ -373,65 +395,6 @@ function Home({ onLogout }) {
               />
             </div>
 
-            <div className="form-group span-two">
-              <label htmlFor="edit-description">Descrição</label>
-              <textarea
-                id="edit-description"
-                name="description"
-                value={editData.description}
-                onChange={handleEditInputChange}
-                placeholder="Descreva o projeto..."
-                className="modal-textarea"
-                rows="3"
-              />
-            </div>
-            
-            <div className="form-group">
-              <label htmlFor="edit-total-area">Área total (m²)</label>
-              <input
-                type="text"
-                id="edit-total-area"
-                name="totalArea"
-                value={editData.totalArea}
-                onChange={handleEditInputChange}
-                placeholder="Ex: 15.000"
-                className="modal-input"
-              />
-            </div>
-            <div className="form-group">
-              <label htmlFor="edit-start-date">Data de início</label>
-              <input
-                type="date"
-                id="edit-start-date"
-                name="startDate"
-                value={editData.startDate}
-                onChange={handleEditInputChange}
-                className="modal-input"
-              />
-            </div>
-            <div className="form-group">
-              <label htmlFor="edit-expected-completion">Previsão de término</label>
-              <input
-                type="date"
-                id="edit-expected-completion"
-                name="expectedCompletion"
-                value={editData.expectedCompletion}
-                onChange={handleEditInputChange}
-                className="modal-input"
-              />
-            </div>
-            <div className="form-group">
-              <label htmlFor="edit-responsible">Responsável</label>
-              <input
-                type="text"
-                id="edit-responsible"
-                name="responsible"
-                value={editData.responsible}
-                onChange={handleEditInputChange}
-                placeholder="Nome do responsável"
-                className="modal-input"
-              />
-            </div>
           </div>
         </div>
         
@@ -447,7 +410,7 @@ function Home({ onLogout }) {
             onClick={handleEditFolder}
             disabled={!editData.name.trim()}
           >
-            💾 Salvar Alterações
+            💾 Salvar alterações
           </button>
         </div>
       </div>
@@ -571,8 +534,8 @@ function Home({ onLogout }) {
       <header className="home-header">
         <div className="header-left">
           <div className="header-logo">
-            <span className="metro-text">METRO</span>
-            <span className="bim-text">BIM</span>
+            <span className="metro-text">METRÔ</span>
+            <img src='C:\metro-bim\MetroWEB\frontend\public\favicon.ico'></img>
           </div>
         </div>
 
@@ -617,7 +580,6 @@ function Home({ onLogout }) {
         </div>
       </header>
 
-      {/* --- MUDANÇA: Adicionado scroll no canto direito --- */}
       <main className="home-main right-scroll">
         <div className="toolbar">
           <div className="search-container">
@@ -630,6 +592,9 @@ function Home({ onLogout }) {
             />
             <span className="search-icon">🔍</span>
           </div>
+          
+          {/* ADICIONANDO O FILTRO DE ORDENAÇÃO */}
+          <SortFilter />
           
           <div className="toolbar-buttons">
             <button 
@@ -669,14 +634,13 @@ function Home({ onLogout }) {
                 </div>
               </div>
               
-              {/* --- MUDANÇA: Botões de editar e deletar lado a lado --- */}
               <div className="folder-actions">
                 <button 
                   className="folder-edit-button"
                   onClick={(e) => openEditModal(folder, e)}
                   title="Editar projeto"
                 >
-                  ✏️
+                  <span>✏️</span>
                 </button>
                 
                 <button 
@@ -684,7 +648,7 @@ function Home({ onLogout }) {
                   onClick={(e) => confirmDelete(folder, e)}
                   title="Excluir pasta"
                 >
-                  🗑️
+                  <span>🗑️</span>
                 </button>
               </div>
             </div>
@@ -838,20 +802,17 @@ function Home({ onLogout }) {
                 onClick={handleCreateNewProject}
                 disabled={!projectData.name.trim() || !projectData.ifcAreaName.trim()}
               >
-                Criar projeto e Gerar Plano
+                Criar projeto
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* --- NOVO: Modal de Confirmação de Exclusão --- */}
       {showDeleteModal && <DeleteConfirmationModal />}
 
-      {/* --- NOVO: Modal de Edição --- */}
       {showEditModal && <EditModal />}
 
-      {/* Modal de Perfil */}
       {showProfileModal && <ProfileModal />}
     </div>
   );
