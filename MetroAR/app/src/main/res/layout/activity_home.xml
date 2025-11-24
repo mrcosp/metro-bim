@@ -13,26 +13,43 @@
         android:layout_gravity="center"
         android:padding="32dp">
 
-        <!-- Título -->
-        <TextView
-            android:text="@string/welcome_title"
-            android:textColor="#FFFFFF"
-            android:textSize="26sp"
-            android:textStyle="bold"
-            android:gravity="center"
+        <RelativeLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="8dp" />
+            android:layout_marginBottom="8dp">
 
-        <!-- Subtítulo -->
-        <TextView
-            android:text="@string/welcome_subtitle"
-            android:textColor="#AAAAAA"
-            android:textSize="14sp"
-            android:gravity="center"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="40dp" />
+            <!-- Título -->
+            <TextView
+                android:id="@+id/welcome_title"
+                android:text="@string/welcome_title"
+                android:textColor="#FFFFFF"
+                android:textSize="26sp"
+                android:textStyle="bold"
+                android:gravity="center"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content" />
+
+            <!-- Subtítulo -->
+            <TextView
+                android:text="@string/welcome_subtitle"
+                android:textColor="#AAAAAA"
+                android:textSize="14sp"
+                android:gravity="center"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_below="@id/welcome_title"
+                android:layout_marginBottom="0dp" />
+
+            <ImageButton
+                android:id="@+id/btnSettings"
+                android:layout_width="32dp"
+                android:layout_height="32dp"
+                android:layout_alignParentEnd="true"
+                android:background="@android:color/transparent"
+                android:src="@drawable/ic_settings"
+                android:padding="4dp"
+                app:tint="#FFFFFF" />
+        </RelativeLayout>
 
         <!-- Botão Projetos -->
         <LinearLayout
@@ -47,7 +64,7 @@
             android:layout_marginBottom="24dp">
 
             <ImageView
-                android:src="@drawable/ic_camera"
+                android:src="@drawable/ic_gallery"
                 android:layout_width="40dp"
                 android:layout_height="40dp"
                 android:layout_marginBottom="8dp"
@@ -74,14 +91,14 @@
             android:layout_marginBottom="16dp">
 
             <ImageView
-                android:src="@drawable/ic_gallery"
-                android:tint="#FFFFFF"
+                android:src="@drawable/ic_camera_alt"
                 android:layout_width="40dp"
                 android:layout_height="40dp"
-                android:layout_marginBottom="8dp" />
+                android:layout_marginBottom="8dp"
+                app:tint="#FFFFFF" />
 
             <TextView
-                android:text="@string/button_gallery"
+                android:text="Camera"
                 android:textColor="#FFFFFF"
                 android:textStyle="bold"
                 android:textSize="16sp"

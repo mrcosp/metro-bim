@@ -1,0 +1,124 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#1E1E1E">
+
+    <!-- Título -->
+    <TextView
+        android:id="@+id/config_title"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Configurações"
+        android:textSize="28sp"
+        android:textStyle="bold"
+        android:textColor="#FFFFFF"
+        android:layout_marginTop="48dp"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"/>
+
+    <!-- Check 1 -->
+    <CheckBox
+        android:id="@+id/checkSalvarDireto"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="48dp"
+        android:layout_marginEnd="32dp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/config_title"/>
+
+    <TextView
+        android:id="@+id/check1_label"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:text="Salvar imagens diretamente na galeria"
+        android:textColor="#FFFFFF"
+        android:textSize="16sp"
+        android:layout_marginStart="16dp"
+        android:layout_marginEnd="8dp"
+        app:layout_constraintTop_toTopOf="@id/checkSalvarDireto"
+        app:layout_constraintBottom_toBottomOf="@id/checkSalvarDireto"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toStartOf="@id/checkSalvarDireto"/>
+
+    <!-- Check 2 -->
+    <CheckBox
+        android:id="@+id/checkCamera"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="48dp"
+        android:layout_marginEnd="32dp"
+        app:layout_constraintTop_toBottomOf="@id/checkSalvarDireto"
+        app:layout_constraintEnd_toEndOf="parent"/>
+
+    <TextView
+        android:id="@+id/check2_label"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:text="Acesso à câmera do celular"
+        android:textColor="#FFFFFF"
+        android:textSize="16sp"
+        android:layout_marginStart="16dp"
+        android:layout_marginEnd="8dp"
+        app:layout_constraintTop_toTopOf="@id/checkCamera"
+        app:layout_constraintBottom_toBottomOf="@id/checkCamera"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toStartOf="@id/checkCamera"/>
+
+    <!-- Check 3 -->
+    <CheckBox
+        android:id="@+id/checkFlash"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="48dp"
+        android:layout_marginEnd="32dp"
+        app:layout_constraintTop_toBottomOf="@id/checkCamera"
+        app:layout_constraintEnd_toEndOf="parent"/>
+
+    <TextView
+        android:id="@+id/check3_label"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:text="Acesso ao flash/lanterna da câmera do celular"
+        android:textColor="#FFFFFF"
+        android:textSize="16sp"
+        android:layout_marginStart="16dp"
+        android:layout_marginEnd="8dp"
+        app:layout_constraintTop_toTopOf="@id/checkFlash"
+        app:layout_constraintBottom_toBottomOf="@id/checkFlash"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toStartOf="@id/checkFlash"/>
+
+    <!-- Botão HOME -->
+    <ImageButton
+        android:id="@+id/home_button"
+        android:layout_width="56dp"
+        android:layout_height="56dp"
+        android:src="@drawable/ic_home"
+        android:background="@drawable/rounded_button_light"
+        android:padding="8dp"
+        app:tint="#FFFFFF"
+        android:layout_marginStart="32dp"
+        android:layout_marginBottom="32dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"/>
+
+    <!-- Botão Salvar -->
+    <Button
+        android:id="@+id/salvar_button"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Salvar alterações"
+        android:textColor="#FFFFFF"
+        android:background="@drawable/rounded_button_light"
+        android:paddingHorizontal="24dp"
+        android:paddingVertical="12dp"
+        android:layout_marginEnd="32dp"
+        android:layout_marginBottom="32dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"/>
+
+</androidx.constraintlayout.widget.ConstraintLayout>

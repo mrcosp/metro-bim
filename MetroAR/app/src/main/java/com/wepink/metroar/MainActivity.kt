@@ -16,11 +16,12 @@ import android.os.Looper
 import android.provider.MediaStore
 import android.util.Log
 import android.view.LayoutInflater
-import android.view.View // NOVO IMPORT
+import android.view.View
 import android.widget.ArrayAdapter
 import android.widget.AutoCompleteTextView
 import android.widget.Button
-import android.widget.RadioGroup // NOVO IMPORT
+import android.widget.ImageButton
+import android.widget.RadioGroup
 import android.widget.Toast
 import androidx.annotation.RequiresPermission
 import androidx.appcompat.app.AlertDialog
@@ -35,7 +36,7 @@ import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import com.google.android.gms.location.*
 import com.google.android.material.textfield.TextInputEditText
-import com.google.android.material.textfield.TextInputLayout // NOVO IMPORT
+import com.google.android.material.textfield.TextInputLayout
 import com.google.common.util.concurrent.ListenableFuture
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -55,6 +56,11 @@ import java.util.Date
 import java.util.Locale
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
+import android.content.Intent
+import androidx.camera.camera2.interop.Camera2Interop
+import androidx.camera.camera2.interop.CaptureRequestOptions
+import androidx.camera.camera2.interop.ExperimentalCamera2Interop
+import android.hardware.camera2.CaptureRequest as Camera2Request
 
 // -------------------------------------------------------------------
 // MODELOS DE DADOS (Não alterados)
@@ -74,27 +80,30 @@ data class CaptureRequest(
 data class ApiResponse(val success: Boolean, val message: String)
 data class FolderResponse(val name: String, val date: String)
 
-interface ApiService {
-    @POST("/api/captures/upload")
+// Retrofit API
+interface ApiServicee {
+    @POST("capture")
     suspend fun uploadCapture(@Body request: CaptureRequest): Response<ApiResponse>
 
-    @GET("/api/folders")
+    @GET("folders")
     suspend fun getFolders(): Response<List<FolderResponse>>
 }
+
 // -------------------------------------------------------------------
 
-class MainActivity : AppCompatActivity(), SensorEventListener {
+@OptIn(androidx.camera.camera2.interop.ExperimentalCamera2Interop::class)
+class CameraActivity : AppCompatActivity(), SensorEventListener {
+    // Novas variáveis globais para armazenar imagem capturada e timestamp
+    private var lastCapturedImageBase64: String? = null
+    private var lastCapturedTimestamp: String? = null
 
     // (Variáveis de UI, Câmera, Localização, etc.)
     private lateinit var apiService: ApiService
     private lateinit var cameraPreviewView: PreviewView
-    private lateinit var captureButton: Button
+    private lateinit var captureButton: ImageButton
     private lateinit var cameraExecutor: ExecutorService
     private lateinit var cameraProviderFuture: ListenableFuture<ProcessCameraProvider>
     private var imageCapture: ImageCapture? = null
-    private lateinit var obraEditText: TextInputEditText
-    private lateinit var pontoDeVistaEditText: TextInputEditText
-    private lateinit var descricaoEditText: TextInputEditText
     private var folderList = mutableListOf<String>()
     private lateinit var folderAdapter: ArrayAdapter<String>
     private lateinit var fusedLocationClient: FusedLocationProviderClient
@@ -105,18 +114,64 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
     private var rotationVectorSensor: Sensor? = null
     private val rotationMatrix = FloatArray(9)
     private val orientationAngles = FloatArray(3)
+    private lateinit var arButton: ImageButton
+    private var isARModeEnabled = false
+
+    // Diretório de saída local para imagens
+    private val outputDirectory: File by lazy {
+        val mediaDir = externalMediaDirs.firstOrNull()?.let {
+            File(it, "MetroAR-Images").apply { mkdirs() }
+        }
+        if (mediaDir != null && mediaDir.exists()) mediaDir else filesDir
+    }
 
     @RequiresPermission(allOf = [Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION])
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_main)
+        setContentView(R.layout.activity_camera)
+
+        // Retrieve folder name from intent if present
+        val receivedFolder = intent.getStringExtra("folderName")
 
         // (Inicialização da UI)
-        cameraPreviewView = findViewById(R.id.camera_preview)
-        captureButton = findViewById(R.id.capture_button)
-        obraEditText = findViewById(R.id.obra_edit_text)
-        pontoDeVistaEditText = findViewById(R.id.ponto_de_vista_edit_text)
-        descricaoEditText = findViewById(R.id.descricao_edit_text)
+        cameraPreviewView = findViewById(R.id.previewView)
+        captureButton = findViewById(R.id.btnCapture)
+        arButton = findViewById(R.id.btnAR)
+        arButton.setOnClickListener {
+            val intent = Intent(this, ARActivity::class.java)
+            startActivity(intent)
+        }
+
+        val homeButton = findViewById<ImageButton>(R.id.btnHome)
+        homeButton.setOnClickListener {
+            finish()
+        }
+
+        cameraExecutor = Executors.newSingleThreadExecutor()
+
+        // Botão Flash (ligar/desligar lanterna)
+        val flashButton = findViewById<ImageButton>(R.id.btnFlash)
+        var isFlashOn = false
+
+        flashButton.setOnClickListener {
+            val cameraProvider = cameraProviderFuture.get()
+            val camera = cameraProvider.bindToLifecycle(
+                this,
+                CameraSelector.DEFAULT_BACK_CAMERA,
+                imageCapture
+            )
+
+            val cameraControl = camera.cameraControl
+            if (!isFlashOn) {
+                cameraControl.enableTorch(true)
+                isFlashOn = true
+                flashButton.setImageResource(R.drawable.ic_flash_on)
+            } else {
+                cameraControl.enableTorch(false)
+                isFlashOn = false
+                flashButton.setImageResource(R.drawable.ic_flash_off)
+            }
+        }
 
         setupFolderAdapter() // Prepara o adapter para o pop-up
         cameraExecutor = Executors.newSingleThreadExecutor()
@@ -143,20 +198,48 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
             )
         }
 
-        captureButton.setOnClickListener { takePhotoAndSaveData() }
+        captureButton.setOnClickListener { takePhoto() }
         fetchFolders() // Busca as pastas do servidor ao iniciar
     }
 
-    // --- MÉTODOS CÂMERA, LOCATION, SENSORES (Não alterados) ---
+    // --- MÉTODOS CÂMERA, LOCATION, SENSORES ---
+
+
+    @androidx.annotation.OptIn(ExperimentalCamera2Interop::class)
     private fun startCamera() {
         cameraProviderFuture = ProcessCameraProvider.getInstance(this)
         cameraProviderFuture.addListener({
             val cameraProvider: ProcessCameraProvider = cameraProviderFuture.get()
+
             val preview = Preview.Builder().build().also {
                 it.setSurfaceProvider(cameraPreviewView.surfaceProvider)
             }
-            imageCapture = ImageCapture.Builder().build()
+
+            // Builder do ImageCapture com Camera2Interop para AF/AE contínuos
+            val builder = ImageCapture.Builder()
+                .setCaptureMode(ImageCapture.CAPTURE_MODE_MAXIMIZE_QUALITY)
+                .setJpegQuality(100)
+                .setFlashMode(ImageCapture.FLASH_MODE_OFF)
+                .setTargetRotation(windowManager.defaultDisplay.rotation)
+
+            val ext = Camera2Interop.Extender(builder)
+            ext.setCaptureRequestOption(
+                Camera2Request.CONTROL_AF_MODE,
+                Camera2Request.CONTROL_AF_MODE_CONTINUOUS_PICTURE
+            )
+            ext.setCaptureRequestOption(
+                Camera2Request.CONTROL_AE_MODE,
+                Camera2Request.CONTROL_AE_MODE_ON
+            )
+            ext.setCaptureRequestOption(
+                Camera2Request.CONTROL_AWB_MODE,
+                Camera2Request.CONTROL_AWB_MODE_AUTO
+            )
+
+            imageCapture = builder.build()
+
             val cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
+
             try {
                 cameraProvider.unbindAll()
                 cameraProvider.bindToLifecycle(this, cameraSelector, preview, imageCapture)
@@ -214,12 +297,11 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
     override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {
         // Nada
     }
-    // --- FIM MÉTODOS CÂMERA, LOCATION, SENSORES ---
 
-    // --- LÓGICA DE PASTAS E UPLOAD (Atualizada) ---
+    // --- LÓGICA DE PASTAS E UPLOAD ---
 
     private fun setupFolderAdapter() {
-        // Apenas inicializa o adapter. Ele será usado no Pop-up.
+        // Apenas inicializa o adapter. Ele será usado no pop-up.
         folderAdapter = ArrayAdapter(this, android.R.layout.simple_dropdown_item_1line, folderList)
     }
 
@@ -232,7 +314,7 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
                     runOnUiThread {
                         folderList.clear()
                         folderList.addAll(names)
-                        folderAdapter.notifyDataSetChanged() // Atualiza o adapter em tempo real
+                        folderAdapter.notifyDataSetChanged()
                         Log.d(TAG, "Pastas carregadas: $names")
                     }
                 } else {
@@ -244,25 +326,17 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
         }
     }
 
-    /**
-     * FUNÇÃO RETROFIT: (Não alterada)
-     */
     private fun uploadDataToMongoDb(captureRequest: CaptureRequest) {
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 val response = apiService.uploadCapture(captureRequest)
                 runOnUiThread {
                     if (response.isSuccessful && response.body()?.success == true) {
-                        Toast.makeText(baseContext, "Dados e Imagem Base64 salvos no Mongo!", Toast.LENGTH_LONG).show()
-                        obraEditText.text?.clear()
-                        pontoDeVistaEditText.text?.clear()
-                        descricaoEditText.text?.clear()
-
-                        // Atualiza a lista de pastas (caso uma nova tenha sido criada)
+                        Toast.makeText(baseContext, "Dados e imagem enviados com sucesso!", Toast.LENGTH_LONG).show()
                         fetchFolders()
                     } else {
                         val errorMsg = response.body()?.message ?: "Erro ${response.code()}"
-                        Toast.makeText(baseContext, "Erro no Servidor: $errorMsg", Toast.LENGTH_LONG).show()
+                        Toast.makeText(baseContext, "Erro no servidor: $errorMsg", Toast.LENGTH_LONG).show()
                     }
                 }
             } catch (e: Exception) {
@@ -276,99 +350,149 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
 
     // --- FUNÇÃO DE CAPTURA (Fluxo Atualizado) ---
 
-    private fun takePhotoAndSaveData() {
+    private fun showCaptureInfoDialog() {
+        val dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_capture_info, null)
+
+        val obraInput = dialogView.findViewById<TextInputEditText>(R.id.dialog_obra_edit_text)
+        val pontoInput = dialogView.findViewById<TextInputEditText>(R.id.dialog_ponto_de_vista_edit_text)
+        val descInput = dialogView.findViewById<TextInputEditText>(R.id.dialog_descricao_edit_text)
+
+        val dialog = AlertDialog.Builder(this)
+            .setTitle("Informações da Captura")
+            .setView(dialogView)
+            .setPositiveButton("Continuar") { dlg, _ ->
+
+                val nome = obraInput.text?.toString()?.trim().orEmpty()
+                val ponto = pontoInput.text?.toString()?.trim().orEmpty()
+                val desc = descInput.text?.toString()?.trim().orEmpty()
+
+                if (nome.isEmpty()) {
+                    Toast.makeText(this, "Por favor, preencha o Nome da Obra", Toast.LENGTH_SHORT).show()
+                    return@setPositiveButton
+                }
+
+                dlg.dismiss()
+
+                // AGORA SÓ ENVIA OS DADOS — SEM TIRAR OUTRA FOTO
+                takePhotoAndSaveData(nome, ponto, desc)
+            }
+            .setNegativeButton("Cancelar") { dlg, _ -> dlg.dismiss() }
+            .create()
+
+        dialog.show()
+    }
+
+    /**
+     * Captura a imagem sem solicitar informações adicionais.
+     */
+    /**
+     * Captura REAL da foto — tirada exatamente no instante do clique.
+     * A imagem e o timestamp são salvos em variáveis globais e reaproveitados no popup.
+     */
+    private fun takePhoto() {
         val imageCapture = imageCapture ?: return
 
-        // 1. Lê os metadados da UI
-        val nomeObra = obraEditText.text.toString().trim()
-        val pontoDeVista = pontoDeVistaEditText.text.toString().trim()
-        val descricao = descricaoEditText.text.toString().trim()
+        val currentDate = Date(System.currentTimeMillis())
+        val timestampFormat = SimpleDateFormat("yyyyMMdd_HHmmssSSS", Locale.US)
+        val filename = "CAPTURE_${timestampFormat.format(currentDate)}.jpg"
+        val photoFile = File(outputDirectory, filename)
 
-        if (nomeObra.isEmpty()) {
-            Toast.makeText(this, "Por favor, preencha o Nome da Obra", Toast.LENGTH_SHORT).show()
-            return
-        }
+        val outputOptions = ImageCapture.OutputFileOptions.Builder(photoFile).build()
 
-        // (Lógica de timestamp e nome de arquivo)
-        val safeNomeObra = nomeObra.replace(Regex("[^a-zA-Z0-9_.-]"), "_")
-        val currentTimeMillis = System.currentTimeMillis()
-        val currentDate = Date(currentTimeMillis)
-        val fileTimestampFormat = SimpleDateFormat("yyyyMMdd_HHmmssSSS", Locale.US)
-        val baseFileName = "${safeNomeObra}_${fileTimestampFormat.format(currentDate)}"
-        val isoTimestampFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZ", Locale.US)
-        val timestampCompleto = isoTimestampFormat.format(currentDate)
-
-
-        // --- 2. Captura da Imagem (Salvando localmente) ---
-        val contentValues = ContentValues().apply {
-            put(MediaStore.MediaColumns.DISPLAY_NAME, baseFileName)
-            put(MediaStore.MediaColumns.MIME_TYPE, "image/jpeg")
-            put(MediaStore.Images.Media.RELATIVE_PATH, "Pictures/MetroAR-Images")
-        }
-        val outputOptions = ImageCapture.OutputFileOptions.Builder(
-            contentResolver,
-            MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
-            contentValues
-        ).build()
+        // TRAVAR EXPOSIÇÃO/AE ANTES DO CLIQUE (garante frame correto)
+        cameraProviderFuture.get().bindToLifecycle(
+            this,
+            CameraSelector.DEFAULT_BACK_CAMERA,
+            imageCapture
+        ).cameraControl.setExposureCompensationIndex(0)
 
         imageCapture.takePicture(
             outputOptions,
             ContextCompat.getMainExecutor(this),
             object : ImageCapture.OnImageSavedCallback {
+
                 override fun onError(exc: ImageCaptureException) {
-                    Log.e(TAG, "Erro salvando foto: ${exc.message}", exc)
+                    Log.e(TAG, "Erro ao capturar imagem: ${exc.message}", exc)
                 }
 
                 override fun onImageSaved(output: ImageCapture.OutputFileResults) {
-                    val imageUri = output.savedUri ?: return
+                    try {
+                        val bytes = photoFile.readBytes()
+                        val base64 = android.util.Base64.encodeToString(bytes, android.util.Base64.NO_WRAP)
 
-                    // --- 3. PROCESSA IMAGEM E PREPARA DADOS (Background) ---
-                    cameraExecutor.execute {
-                        try {
-                            // (Lê os bytes da imagem usando o ContentResolver)
-                            val inputStream: InputStream? = contentResolver.openInputStream(imageUri)
-                            val bytes: ByteArray? = inputStream?.use { it.readBytes() }
+                        lastCapturedImageBase64 = base64
 
-                            if (bytes == null) {
-                                Log.e(TAG, "Falha ao ler bytes da imagem salva.")
-                                runOnUiThread { Toast.makeText(baseContext, "Erro: Falha ao ler imagem.", Toast.LENGTH_LONG).show() }
-                                return@execute
-                            }
+                        val iso = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZ", Locale.US)
+                        lastCapturedTimestamp = iso.format(currentDate)
 
-                            val base64String = android.util.Base64.encodeToString(bytes, android.util.Base64.NO_WRAP)
-
-                            // (Prepara dados de GPS e Orientação)
-                            val gpsData = GpsData(
-                                latitude = currentLocation?.latitude,
-                                longitude = currentLocation?.longitude,
-                                altitude_metros = currentLocation?.altitude,
-                                precisao_metros = currentLocation?.accuracy,
-                                status = if (currentLocation != null) null else "Não disponível"
-                            )
-                            val orientationData = OrientationData(
-                                azimute_graus = Math.toDegrees(orientationAngles[0].toDouble()),
-                                pitch_graus = Math.toDegrees(orientationAngles[1].toDouble()),
-                                roll_graus = Math.toDegrees(orientationAngles[2].toDouble())
-                            )
-
-                            // --- 4. CHAMA O POP-UP NA UI THREAD ---
-                            runOnUiThread {
-                                showFolderSelectDialog(
-                                    nomeObra, pontoDeVista, descricao, timestampCompleto,
-                                    gpsData, orientationData, base64String
-                                )
-                            }
-
-                        } catch (e: IOException) {
-                            Log.e(TAG, "Erro ao ler arquivo ou Base64", e)
-                            runOnUiThread {
-                                Toast.makeText(baseContext, "Erro: Falha no processamento da imagem.", Toast.LENGTH_LONG).show()
-                            }
+                        runOnUiThread {
+                            Toast.makeText(baseContext, "Imagem capturada!", Toast.LENGTH_SHORT).show()
+                            showCaptureInfoDialog()  // vai pedir dados, mas sem tirar outra foto
                         }
+
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Erro lendo foto capturada", e)
                     }
                 }
             }
         )
+    }
+
+    /**
+     * Captura a imagem e prepara os dados, recebendo os campos do usuário.
+     */
+    /**
+     * ENVIA a foto já capturada (lastCapturedImageBase64)
+     * Esse método NÃO tira outra foto.
+     */
+    private fun takePhotoAndSaveData(nomeObra: String, pontoDeVista: String, descricao: String) {
+
+        if (lastCapturedImageBase64 == null || lastCapturedTimestamp == null) {
+            Toast.makeText(this, "Nenhuma imagem capturada!", Toast.LENGTH_LONG).show()
+            return
+        }
+
+        val gpsData = GpsData(
+            latitude = currentLocation?.latitude,
+            longitude = currentLocation?.longitude,
+            altitude_metros = currentLocation?.altitude,
+            precisao_metros = currentLocation?.accuracy,
+            status = if (currentLocation != null) null else "Não disponível"
+        )
+
+        val orientationData = OrientationData(
+            azimute_graus = Math.toDegrees(orientationAngles[0].toDouble()),
+            pitch_graus = Math.toDegrees(orientationAngles[1].toDouble()),
+            roll_graus = Math.toDegrees(orientationAngles[2].toDouble())
+        )
+
+        val folderFromIntent = intent.getStringExtra("folderName")
+
+        if (folderFromIntent != null) {
+            // Veio da galeria — envia direto para a pasta recebida
+            val request = CaptureRequest(
+                nomeObra,
+                pontoDeVista,
+                descricao,
+                lastCapturedTimestamp!!,
+                gpsData,
+                orientationData,
+                lastCapturedImageBase64!!,
+                folderFromIntent
+            )
+            uploadDataToMongoDb(request)
+        } else {
+            // Veio da Home — escolher pasta primeiro
+            showFolderSelectDialog(
+                nomeObra,
+                pontoDeVista,
+                descricao,
+                lastCapturedTimestamp!!,
+                gpsData,
+                orientationData,
+                lastCapturedImageBase64!!
+            )
+        }
     }
 
     /**
@@ -383,63 +507,51 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
         orientationData: OrientationData,
         imageBase64: String
     ) {
-        // 1. Infla o layout do diálogo (dialog_folder_select.xml)
         val dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_folder_select, null)
 
-        // 2. Referencia TODOS os novos componentes do pop-up
         val radioGroup = dialogView.findViewById<RadioGroup>(R.id.folder_radio_group)
         val selectLayout = dialogView.findViewById<TextInputLayout>(R.id.dialog_folder_select_layout)
         val createLayout = dialogView.findViewById<TextInputLayout>(R.id.dialog_folder_create_layout)
         val dialogAutoComplete = dialogView.findViewById<AutoCompleteTextView>(R.id.dialog_folder_autocomplete)
         val dialogNewFolderText = dialogView.findViewById<TextInputEditText>(R.id.dialog_folder_new_edittext)
 
-        // 3. Configura o adapter de seleção
         dialogAutoComplete.setAdapter(folderAdapter)
         dialogAutoComplete.threshold = 1
 
-        // 4. Lógica de visibilidade (Radio Buttons)
         radioGroup.setOnCheckedChangeListener { _, checkedId ->
             if (checkedId == R.id.radio_select_folder) {
-                // Modo "Selecionar"
                 selectLayout.visibility = View.VISIBLE
                 createLayout.visibility = View.GONE
             } else {
-                // Modo "Criar"
                 selectLayout.visibility = View.GONE
                 createLayout.visibility = View.VISIBLE
             }
         }
 
-        // 5. Cria o AlertDialog
         val builder = AlertDialog.Builder(this)
         builder.setView(dialogView)
 
         builder.setPositiveButton("Salvar") { dialog, _ ->
-            val folderName: String
-
-            // 6. Pega o nome da pasta baseado no modo selecionado
-            if (radioGroup.checkedRadioButtonId == R.id.radio_select_folder) {
-                folderName = dialogAutoComplete.text.toString().trim()
+            val folderName: String = if (radioGroup.checkedRadioButtonId == R.id.radio_select_folder) {
+                dialogAutoComplete.text.toString().trim()
             } else {
-                folderName = dialogNewFolderText.text.toString().trim()
+                dialogNewFolderText.text.toString().trim()
             }
 
             if (folderName.isEmpty()) {
                 Toast.makeText(this, "O nome da pasta não pode estar vazio.", Toast.LENGTH_SHORT).show()
             } else {
-                // 7. Monta o request final
                 val finalRequest = CaptureRequest(
                     nomeObra = nomeObra,
                     pontoDeVista = pontoDeVista,
                     descricao = descricao,
-                    criado_em = criado_em,
+                    criado_em = lastCapturedTimestamp ?: criado_em,
                     gps = gpsData,
                     orientacao = orientationData,
-                    imageBase64 = imageBase64,
-                    folder = folderName // O nome da pasta vindo do pop-up
+                    imageBase64 = lastCapturedImageBase64 ?: imageBase64,
+                    folder = folderName
                 )
 
-                // 8. Envia para o servidor
                 uploadDataToMongoDb(finalRequest)
                 dialog.dismiss()
             }
@@ -452,8 +564,8 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
         builder.create().show()
     }
 
+    // --- MÉTODOS DE PERMISSÃO E LIFECYCLE ---
 
-    // --- MÉTODOS DE PERMISSÃO E LIFECYCLE (Não alterados) ---
     @RequiresPermission(allOf = [Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION])
     override fun onResume() {
         super.onResume()
@@ -500,14 +612,8 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
         private const val TAG = "MetroAR_MainActivity"
         private const val REQUEST_CODE_PERMISSIONS = 10
 
-        // ⚠️ Lembre-se de usar o IP correto do seu servidor Mongoose
-<<<<<<< Updated upstream
-        private const val BASE_URL = "http://192.168.15.22:3000/" // IP do Emulador
-=======
-        private const val BASE_URL = "http://192.168.15.81:3000/" // IP do Emulador
->>>>>>> Stashed changes
+        private const val BASE_URL = "http://10.2.0.202:3000/"
 
-        // ATUALIZADO: Lista de permissões sem WRITE_EXTERNAL_STORAGE
         private val REQUIRED_PERMISSIONS =
             mutableListOf(
                 Manifest.permission.CAMERA,
