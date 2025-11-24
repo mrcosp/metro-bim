@@ -1,6 +1,7 @@
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
+    id("kotlin-kapt")
 }
 
 repositories {
@@ -99,6 +100,9 @@ dependencies {
 
     // ARSceneview for augmented reality capabilities
     implementation("io.github.sceneview:arsceneview:0.10.0")
+
+    implementation ("com.github.bumptech.glide:glide:4.16.0")
+    kapt("com.github.bumptech.glide:compiler:4.16.0")
 
 // REMOVIDO: implementacao do mongodb-driver-sync
     // REMOVIDO: implementacao do org.mongodb:bson

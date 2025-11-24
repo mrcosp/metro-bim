@@ -1,133 +1,110 @@
 <?xml version="1.0" encoding="utf-8"?>
-<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#1E1E1E"
-    android:padding="24dp">
+    android:background="#1E1E1E">
 
-    <LinearLayout
-        android:orientation="vertical"
+    <ScrollView
         android:layout_width="match_parent"
-        android:layout_height="wrap_content">
-
-        <TextView
-            android:text="@string/projetos"
-            android:textSize="26sp"
-            android:textStyle="bold"
-            android:textColor="#FFFFFF"
-            android:gravity="center"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="24dp" />
+        android:layout_height="match_parent"
+        android:padding="24dp">
 
         <LinearLayout
-            android:orientation="horizontal"
-            android:gravity="center_vertical"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="24dp">
-
-            <EditText
-                android:id="@+id/inputProjectName"
-                android:hint="@string/nome_projeto"
-                android:textColorHint="#AAAAAA"
-                android:textColor="#FFFFFF"
-                android:padding="10dp"
-                android:background="@drawable/edittext_rounded"
-                android:layout_weight="1"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:inputType="text" />
-
-            <ImageButton
-                android:id="@+id/btnAddProject"
-                android:src="@drawable/ic_add"
-                android:backgroundTint="#22C55E"
-                android:background="@drawable/add_button"
-                android:contentDescription="@string/adicionar_projeto"
-                android:layout_width="48dp"
-                android:layout_height="48dp"
-                android:layout_marginStart="8dp"
-                app:tint="#FFFFFF" />
-        </LinearLayout>
-
-        <TextView
-            android:text="@string/projetos_recente"
-            android:textSize="14sp"
-            android:textStyle="bold"
-            android:textColor="#AAAAAA"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="16dp" />
-
-        <androidx.gridlayout.widget.GridLayout
-            android:id="@+id/gridProjects"
-            app:columnCount="2"
-            app:rowCount="3"
-            app:alignmentMode="alignMargins"
-            app:columnOrderPreserved="false"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="80dp">
-
-            <LinearLayout
-                android:orientation="vertical"
-                android:layout_margin="8dp"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                app:layout_columnSpan="1"
-                app:layout_gravity="fill_horizontal"
-                android:gravity="center_horizontal">
-
-                <ImageView
-                    android:src="@drawable/ic_folder"
-                    android:layout_width="80dp"
-                    android:layout_height="80dp" />
-
-                <TextView
-                    android:text="Nome: projeto"
-                    android:textColor="#FFFFFF"
-                    android:textStyle="bold"
-                    android:textSize="13sp"
-                    android:layout_marginTop="4dp"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content" />
-
-                <TextView
-                    android:text="Data: 06/01/2021"
-                    android:textColor="#AAAAAA"
-                    android:textSize="12sp"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content" />
-            </LinearLayout>
-        </androidx.gridlayout.widget.GridLayout>
-
-        <LinearLayout
-            android:orientation="horizontal"
-            android:gravity="center"
+            android:orientation="vertical"
             android:layout_width="match_parent"
             android:layout_height="wrap_content">
 
-            <ImageButton
-                android:id="@+id/btnHome"
-                android:src="@drawable/ic_home"
-                android:background="@android:color/transparent"
-                android:contentDescription="@string/inicio"
-                android:layout_width="64dp"
-                android:layout_height="64dp"
-                app:tint="#3B82F6" />
+            <TextView
+                android:text="@string/projetos"
+                android:textSize="26sp"
+                android:textStyle="bold"
+                android:textColor="#FFFFFF"
+                android:gravity="center"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="24dp" />
 
-            <ImageButton
-                android:id="@+id/btnGallery"
-                android:src="@drawable/ic_gallery"
-                android:background="@android:color/transparent"
-                android:contentDescription="@string/galeria"
-                android:layout_width="64dp"
-                android:layout_height="64dp"
-                android:layout_marginStart="16dp"
-                app:tint="#3B82F6" />
+            <LinearLayout
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="24dp">
+
+                <EditText
+                    android:id="@+id/inputProjectName"
+                    android:hint="@string/nome_projeto"
+                    android:textColorHint="#AAAAAA"
+                    android:textColor="#FFFFFF"
+                    android:padding="10dp"
+                    android:background="@drawable/edittext_rounded"
+                    android:layout_weight="1"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:inputType="text" />
+
+                <ImageButton
+                    android:id="@+id/btnAddProject"
+                    android:src="@drawable/ic_add"
+                    android:backgroundTint="#22C55E"
+                    android:background="@drawable/add_button"
+                    android:contentDescription="@string/adicionar_projeto"
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:layout_marginStart="8dp"
+                    app:tint="#FFFFFF" />
+            </LinearLayout>
+
+            <TextView
+                android:text="@string/projetos_recente"
+                android:textSize="14sp"
+                android:textStyle="bold"
+                android:textColor="#AAAAAA"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="16dp" />
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/recyclerProjects"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="80dp" />
+
         </LinearLayout>
+    </ScrollView>
 
+    <LinearLayout
+        android:id="@+id/floatingBottomBar"
+        android:orientation="horizontal"
+        android:gravity="center"
+        android:padding="12dp"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentBottom="true"
+        android:layout_centerHorizontal="true"
+        android:background="@drawable/floating_bar_background"
+        android:elevation="12dp"
+        android:layout_marginBottom="24dp">
+
+        <ImageButton
+            android:id="@+id/btnHome"
+            android:src="@drawable/ic_home"
+            android:background="@android:color/transparent"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:padding="8dp"
+            app:tint="#FFFFFF" />
+
+        <ImageButton
+            android:id="@+id/btnGallery"
+            android:src="@drawable/ic_gallery"
+            android:background="@android:color/transparent"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:padding="8dp"
+            android:layout_marginStart="24dp"
+            app:tint="#FFFFFF" />
     </LinearLayout>
-</ScrollView>
+
+</RelativeLayout>

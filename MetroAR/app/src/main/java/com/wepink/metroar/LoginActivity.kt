@@ -36,7 +36,7 @@ class LoginActivity : AppCompatActivity() {
                 finish()
             } else {
                 // Login failed
-                Toast.makeText(this, "Invalid username or password", Toast.LENGTH_LONG).show()
+                Toast.makeText(this, "Email ou CPF invalido.", Toast.LENGTH_LONG).show()
             }
         }
     }

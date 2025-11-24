@@ -42,7 +42,7 @@
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="@+id/background_image"
-        app:layout_constraintVertical_bias="0.519" />
+        app:layout_constraintVertical_bias="0.534" />
 
     <ImageView
         android:id="@+id/login_image_view"
@@ -75,7 +75,7 @@
         android:layout_width="302dp"
         android:layout_height="57dp"
         android:layout_marginTop="172dp"
-        android:hint="Usuario"
+        android:hint="E-mail"
         android:inputType="text"
         app:layout_constraintEnd_toEndOf="@+id/squircle_backdrop"
         app:layout_constraintHorizontal_bias="0.481"
@@ -87,9 +87,8 @@
         android:layout_width="302dp"
         android:layout_height="48dp"
         android:layout_marginTop="20dp"
-        android:hint="Senha"
+        android:hint="CPF"
         android:inputType="textPassword"
-        app:layout_constraintBottom_toTopOf="@+id/forgot_password_textview"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintHorizontal_bias="0.493"
         app:layout_constraintStart_toStartOf="parent"
@@ -106,18 +105,6 @@
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/password_edit_text" />
-
-    <TextView
-        android:id="@+id/forgot_password_textview"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="80dp"
-        android:clickable="true"
-        android:focusable="true"
-        android:text="Esqueceu a senha?"
-        android:textColor="#1C5CA2"
-        app:layout_constraintStart_toStartOf="@+id/username_edit_text"
-        app:layout_constraintTop_toBottomOf="@+id/username_edit_text" />
 
     <androidx.constraintlayout.widget.Guideline
         android:id="@+id/guideline"

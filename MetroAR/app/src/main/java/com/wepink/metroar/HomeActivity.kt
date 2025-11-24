@@ -2,7 +2,6 @@ package com.wepink.metroar
 
 import android.content.Intent
 import android.os.Bundle
-import android.widget.Button
 import android.widget.LinearLayout
 import androidx.appcompat.app.AppCompatActivity
 
@@ -14,7 +13,6 @@ class HomeActivity : AppCompatActivity() {
 
         val btnProjects = findViewById<LinearLayout>(R.id.btnProjects)
         val btnGallery = findViewById<LinearLayout>(R.id.btnGallery)
-        val btnCamera = findViewById<LinearLayout>(R.id.btnCamera)
 
         // Ir para LoginActivity (ou outra que represente "Projetos")
         btnProjects.setOnClickListener {
@@ -25,12 +23,6 @@ class HomeActivity : AppCompatActivity() {
         // Ir para GaleriaActivity
         btnGallery.setOnClickListener {
             val intent = Intent(this, GaleriaActivity::class.java)
-            startActivity(intent)
-        }
-
-        // Ir para CameraActivity
-        btnCamera.setOnClickListener {
-            val intent = Intent(this, CameraActivity::class.java)
             startActivity(intent)
         }
 

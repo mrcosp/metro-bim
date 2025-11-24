@@ -76,7 +76,7 @@ data class CaptureRequest(
 data class ApiResponse(val success: Boolean, val message: String)
 data class FolderResponse(val name: String, val date: String)
 
-interface ApiService {
+interface ApiServicee {
     @POST("/api/captures/upload")
     suspend fun uploadCapture(@Body request: CaptureRequest): Response<ApiResponse>
 
@@ -123,6 +123,9 @@ class CameraActivity : AppCompatActivity(), SensorEventListener {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_camera)
+
+        // Retrieve folder name from intent if present
+        val receivedFolder = intent.getStringExtra("folderName")
 
         // (Inicialização da UI)
         cameraPreviewView = findViewById(R.id.previewView)
@@ -453,10 +456,19 @@ class CameraActivity : AppCompatActivity(), SensorEventListener {
                         )
 
                         runOnUiThread {
-                            showFolderSelectDialog(
-                                nomeObra, pontoDeVista, descricao, timestampCompleto,
-                                gpsData, orientationData, base64String
-                            )
+                            val folderFromIntent = intent.getStringExtra("folderName")
+                            if (folderFromIntent != null) {
+                                val finalRequest = CaptureRequest(
+                                    nomeObra, pontoDeVista, descricao, timestampCompleto,
+                                    gpsData, orientationData, base64String, folderFromIntent
+                                )
+                                uploadDataToMongoDb(finalRequest)
+                            } else {
+                                showFolderSelectDialog(
+                                    nomeObra, pontoDeVista, descricao, timestampCompleto,
+                                    gpsData, orientationData, base64String
+                                )
+                            }
                         }
                     } catch (e: IOException) {
                         Log.e(TAG, "Erro ao ler imagem salva", e)
