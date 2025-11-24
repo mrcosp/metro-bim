@@ -10,7 +10,7 @@ import androidx.appcompat.app.AppCompatActivity
 class LoginActivity : AppCompatActivity() {
 
     // Define your hardcoded credentials
-    private val VALID_USERNAME = "admin@metro.com.br"
+    private val VALID_USERNAME = "admin@metro.com"
     private val VALID_PASSWORD = "12345678910"
 
     private lateinit var usernameEditText: EditText
