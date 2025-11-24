@@ -15,7 +15,10 @@ function ConstructionHistory({ projectName, onBack }) {
   const [bimPlanImage, setBimPlanImage] = useState(null);
   const [isLoadingBimPlan, setIsLoadingBimPlan] = useState(false);
 
-  // Buscar imagens e progresso
+  useEffect(() => {
+    document.title = "Metrô SP - Histórico de obras";
+  }, []);
+
   useEffect(() => {
     
     // Função para buscar as imagens da pasta
@@ -65,7 +68,6 @@ function ConstructionHistory({ projectName, onBack }) {
       }
     };
 
-    // Função para buscar a imagem do plano BIM 100%
     const fetchPlanImage = async () => {
         if (!projectName) return;
         setIsLoadingBimPlan(true);
@@ -91,7 +93,6 @@ function ConstructionHistory({ projectName, onBack }) {
     
   }, [projectName]); 
 
-  // Determina se são poucas ou muitas imagens
   const hasFewImages = images.length <= 4;
   const timelineClass = `timeline-scroll ${hasFewImages ? 'few-images' : 'many-images'}`;
 
@@ -112,7 +113,6 @@ function ConstructionHistory({ projectName, onBack }) {
     }
   };
  
-  // Função de upload
   const handleUpload = async () => {
     if (!selectedFile) return;
  
@@ -146,7 +146,6 @@ function ConstructionHistory({ projectName, onBack }) {
         alert('Imagem enviada com sucesso!');
         setSelectedFile(null);
  
-        // Recarrega as imagens
         const updated = await fetch(`/folder/${projectName}`);
         const imagesData = await updated.json();
         
@@ -177,9 +176,29 @@ function ConstructionHistory({ projectName, onBack }) {
     }
   };
 
-  const handleExportReport = async () => { /* ... (sem mudanças) ... */ };
+  const handleExportReport = async () => {
+    try {
+      const response = await fetch(`/api/export-report/${projectName}`);
+      if (response.ok) {
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.style.display = 'none';
+        a.href = url;
+        a.download = `relatorio-${projectName}-${new Date().toISOString().split('T')[0]}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+      } else {
+        alert('Erro ao exportar relatório');
+      }
+    } catch (error) {
+      console.error('Erro ao exportar relatório:', error);
+      alert('Erro ao exportar relatório');
+    }
+  };
 
-  // Função handleApplyAI
   const handleApplyAI = async () => {
     if (!currentImage) return;
     
@@ -230,56 +249,83 @@ function ConstructionHistory({ projectName, onBack }) {
   const formatDate = (dateString) =>
     new Date(dateString).toLocaleDateString('pt-BR');
 
-  const getProgressColor = (progress) => { /* ... (sem mudanças) ... */ };
+  const getProgressColor = (progress) => {
+    if (progress >= 80) return '#00b894';
+    if (progress >= 50) return '#fdcb6e';
+    return '#e17055';
+  };
 
   const currentImage = images[currentImageIndex];
   const realProgress = progressData ? progressData.porcentagem_geral : 0;
 
-  // Bloco 'sem imagem' (sem mudanças)
+  // TELA MELHORADA PARA PROJETO VAZIO
   if (!currentImage) {
     return (
-      <div className="history-container">
+      <div className="empty-project-container">
         <header className="history-header">
           <button className="back-button" onClick={onBack}>← Voltar</button>
           <h1 className="project-title">{projectName}</h1>
+          <div className="header-actions">
+            <span className="progress-badge empty-badge">
+              Projeto Vazio
+            </span>
+          </div>
         </header>
-        <p className="text-center mt-8">Nenhuma imagem encontrada.</p>
-        
-        <div className="summary-section">
-            <div className="upload-section" style={{ margin: '0 auto', maxWidth: '400px' }}>
-              <h3>Adicionar nova imagem</h3>
-              <div className="upload-area">
-                <input
-                  id="file-input"
-                  type="file"
-                  accept="image/*"
-                  onChange={handleFileSelect}
-                  className="file-input"
-                />
-                <label htmlFor="file-input" className="upload-button">
-                  📷 Selecionar imagem
-                </label>
-                {selectedFile && (
-                  <div className="selected-file">
-                    <span>{selectedFile.name}</span>
-                    <button onClick={handleUpload} className="confirm-upload">
-                      📤 Enviar
-                    </button>
-                  </div>
-                )}
+
+        <div className="empty-state">
+          <div className="empty-icon">
+            
+          </div>
+          
+          <div className="empty-content">
+            <h2>Nenhuma imagem encontrada</h2>
+            <p>Nenhuma imagem foi adicionada ao projeto!</p>
+            
+            <div className="upload-section-empty">
+              <div className="upload-card">
+                <h3>Comece adicionando a primeira imagem</h3>
+                <div className="upload-area-empty">
+                  <input
+                    id="file-input-empty"
+                    type="file"
+                    accept="image/*"
+                    onChange={handleFileSelect}
+                    className="file-input"
+                  />
+                  <label htmlFor="file-input-empty" className="upload-button-empty">
+                    <div className="upload-icon">📷</div>
+                    <div className="upload-text">
+                      <strong>Selecionar imagem</strong>
+                      <span>Clique para escolher ou arraste uma foto</span>
+                    </div>
+                  </label>
+                  
+                  {selectedFile && (
+                    <div className="selected-file-empty">
+                      <div className="file-info">
+                        <span className="file-name">{selectedFile.name}</span>
+                        <span className="file-size">
+                          {(selectedFile.size / (1024 * 1024)).toFixed(2)} MB
+                        </span>
+                      </div>
+                      <button onClick={handleUpload} className="confirm-upload-empty">
+                        📤 Enviar Primeira Imagem
+                      </button>
+                    </div>
+                  )}
+                </div>
+                <p className="upload-hint-empty">
+                  Formatos suportados: JPG, PNG, WEBP (Tamanho máximo: 10MB)
+                </p>
               </div>
-              <p className="upload-hint">
-                Formatos: JPG, PNG (Máx: 10MB)
-              </p>
             </div>
+          </div>
         </div>
-        
       </div>
     );
   }
 
-
-  // Bloco principal 'com imagens'
+  // BLOCO PRINCIPAL PARA PROJETO COM IMAGENS
   return (
     <div className="history-container">
       <header className="history-header">
@@ -302,21 +348,23 @@ function ConstructionHistory({ projectName, onBack }) {
           <div className={`image-container ${showComparison ? 'comparison-mode' : ''}`}>
             
             {/* --- IMAGEM 1: ORIGINAL --- */}
-            <div className={`image-wrapper`}>
-              <img
-                src={currentImage.url}
-                alt={`Obra ${formatDate(currentImage.date)}`}
-                className="construction-image"
-              />
-
-              {/* Overlay BIM (IMAGEM 1) */}
-              {showBimOverlay && bimPlanImage && (
+            <div className="image-wrapper">
+              <div className="image-comparison-container">
                 <img
-                  src={bimPlanImage}
-                  alt="Overlay do Plano BIM"
-                  className="bim-overlay-image" 
+                  src={currentImage.url}
+                  alt={`Obra ${formatDate(currentImage.date)}`}
+                  className="construction-image large-image"
                 />
-              )}
+
+                {/* Overlay BIM - Agora dentro do mesmo container */}
+                {showBimOverlay && bimPlanImage && (
+                  <img
+                    src={bimPlanImage}
+                    alt="Overlay do Plano BIM"
+                    className="bim-overlay-image proportional-overlay" 
+                  />
+                )}
+              </div>
 
               {!showComparison && (
                 <>
@@ -330,14 +378,13 @@ function ConstructionHistory({ projectName, onBack }) {
             {/* --- IMAGEM 2: ANÁLISE IA --- */}
             {showComparison && aiProcessedImage && (
               <div className="image-wrapper">
-                <img
-                  src={aiProcessedImage.url || '/api/placeholder/800/600'} 
-                  alt={`Processado por IA ${formatDate(currentImage.date)}`}
-                  className="construction-image"
-                />
-                
-                {/* --- MUDANÇA: O Overlay BIM foi REMOVIDO daqui --- */}
-
+                <div className="image-comparison-container">
+                  <img
+                    src={aiProcessedImage.url || '/api/placeholder/800/600'} 
+                    alt={`Processado por IA ${formatDate(currentImage.date)}`}
+                    className="construction-image large-image"
+                  />
+                </div>
                 <div className="image-label">Análise IA</div>
               </div>
             )}
@@ -364,7 +411,6 @@ function ConstructionHistory({ projectName, onBack }) {
                       showComparison ? '🔄 Nova Análise' : '🤖 Aplicar IA'}
                   </button>
 
-                  {/* Botão de Toggle do Overlay BIM (funciona em ambos os modos) */}
                   {bimPlanImage && (
                     <button 
                       className={`bim-overlay-btn ${showBimOverlay ? 'comparison-active' : ''}`}
@@ -406,63 +452,86 @@ function ConstructionHistory({ projectName, onBack }) {
           </div>
         </div>
 
-        {summary && (
-          <div className="summary-section">
-            <div className="summary-card">
-              <h2>Sumário da obra</h2>
-              <div className="summary-item">
-                <label>Área total:</label>
-                <span>{summary.totalArea}</span>
+        <div className="sidebar-section">
+          {summary && (
+            <div className="summary-section">
+              <div className="summary-card">
+                <h2>Sumário da obra</h2>
+                <div className="summary-item">
+                  <label>Área total:</label>
+                  <span>{summary.totalArea}</span>
+                </div>
+                <div className="summary-item">
+                  <label>Data início:</label>
+                  <span>{formatDate(summary.startDate)}</span>
+                </div>
+                <div className="summary-item">
+                  <label>Previsão término:</label>
+                  <span>{formatDate(summary.expectedCompletion)}</span>
+                </div>
+                <div className="summary-item">
+                  <label>Responsável:</label>
+                  <span>{summary.responsible}</span>
+                </div>
+                <div className="summary-item">
+                  <label>Status:</label>
+                  <span className={`status-badge ${summary.status.toLowerCase().replace(' ', '-')}`}>
+                    {summary.status}
+                  </span>
+                </div>
               </div>
-              <div className="summary-item">
-                <label>Data início:</label>
-                <span>{formatDate(summary.startDate)}</span>
-              </div>
-              <div className="summary-item">
-                <label>Previsão término:</label>
-                <span>{formatDate(summary.expectedCompletion)}</span>
-              </div>
-              <div className="summary-item">
-                <label>Responsável:</label>
-                <span>{summary.responsible}</span>
-              </div>
-              <div className="summary-item">
-                <label>Status:</label>
-                <span className={`status-badge ${summary.status.toLowerCase().replace(' ', '-')}`}>
-                  {summary.status}
-                </span>
-              </div>
-            </div>
 
-            <div className="upload-section">
-              <h3>Adicionar nova imagem</h3>
-              <div className="upload-area">
-                <input
-                  id="file-input"
-                  type="file"
-                  accept="image/*"
-                  onChange={handleFileSelect}
-                  className="file-input"
-                />
-                <label htmlFor="file-input" className="upload-button">
-                  📷 Selecionar imagem
-                </label>
-
-                {selectedFile && (
-                  <div className="selected-file">
-                    <span>{selectedFile.name}</span>
-                    <button onClick={handleUpload} className="confirm-upload">
-                      📤 Enviar
-                    </button>
+              {/* CONTAINER: LEGENDA DAS CORES DA IA */}
+              <div className="legend-card">
+                <h3>Legenda - Análise IA</h3>
+                <div className="legend-items">
+                  <div className="legend-item">
+                    <div className="legend-color" style={{backgroundColor: '#00b894'}}></div>
+                    <span>Aço</span>
                   </div>
-                )}
+                  
+                  <div className="legend-item">
+                    <div className="legend-color" style={{backgroundColor: '#e17055'}}></div>
+                    <span>Concreto</span>
+                  </div>
+                  
+                  <div className="legend-item">
+                    <div className="legend-color" style={{backgroundColor: '#0984e3'}}></div>
+                    <span>Deck metálico</span>
+                  </div>
+                </div>
               </div>
-              <p className="upload-hint">
-                Formatos: JPG, PNG (Máx: 10MB)
-              </p>
+
+              <div className="upload-section">
+                <h3>Adicionar nova imagem</h3>
+                <div className="upload-area">
+                  <input
+                    id="file-input"
+                    type="file"
+                    accept="image/*"
+                    onChange={handleFileSelect}
+                    className="file-input"
+                  />
+                  <label htmlFor="file-input" className="upload-button">
+                    📷 Selecionar imagem
+                  </label>
+
+                  {selectedFile && (
+                    <div className="selected-file">
+                      <span>{selectedFile.name}</span>
+                      <button onClick={handleUpload} className="confirm-upload">
+                        📤 Enviar
+                      </button>
+                    </div>
+                  )}
+                </div>
+                <p className="upload-hint">
+                  Formatos: JPG, PNG (Máx: 10MB)
+                </p>
+              </div>
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
     </div>
   );

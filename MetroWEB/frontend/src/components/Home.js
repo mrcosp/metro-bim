@@ -23,6 +23,10 @@ function Home({ onLogout }) {
 
   const [sortOrder, setSortOrder] = useState('recent'); // 'recent' ou 'old'
 
+  useEffect(() => {
+      document.title = "Metrô SP - Home";
+    }, []);
+
   const [projectData, setProjectData] = useState({
     name: '',
     ifcAreaName: '', 

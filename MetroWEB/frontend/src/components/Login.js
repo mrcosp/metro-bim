@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState,  useEffect } from 'react';
 import './Login.css';
 
 function Login({ onLogin }) {
@@ -6,6 +6,7 @@ function Login({ onLogin }) {
   const [cpf, setCpf] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
+
 
   const handleCpfChange = (e) => {
     const numbers = e.target.value.replace(/\D/g, '');
@@ -15,6 +16,11 @@ function Login({ onLogin }) {
     if (numbers.length > 9) formatted = `${numbers.slice(0,3)}.${numbers.slice(3,6)}.${numbers.slice(6,9)}-${numbers.slice(9,11)}`;
     setCpf(formatted);
   };
+
+    useEffect(() => {
+        document.title = "Metrô SP - Login";
+      }, []);
+  
 
   const handleSubmit = async (e) => {
     e.preventDefault();

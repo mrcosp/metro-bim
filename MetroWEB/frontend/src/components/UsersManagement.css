@@ -350,16 +350,29 @@
   background: white;
 }
 
+/* ESTILOS MELHORADOS PARA O CHECKBOX */
 .checkbox-group {
   margin-top: 1rem;
+  padding: 1rem;
+  background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+  border-radius: 8px;
+  border: 1px solid #e1e5e9;
 }
 
 .checkbox-label {
   display: flex;
   align-items: center;
   cursor: pointer;
-  font-weight: normal;
-  margin-bottom: 0;
+  font-weight: 600;
+  color: #333;
+  margin: 0;
+  padding: 0;
+  transition: all 0.3s ease;
+  /* Remove gap e usa margin-right no checkmark */
+}
+
+.checkbox-label:hover {
+  color: #001871;
 }
 
 .checkbox-input {
@@ -367,31 +380,83 @@
 }
 
 .checkmark {
-  width: 20px;
-  height: 20px;
+  width: 22px;
+  height: 22px;
   border: 2px solid #e1e5e9;
-  border-radius: 4px;
-  margin-right: 0.75rem;
+  border-radius: 6px;
   position: relative;
   transition: all 0.3s ease;
   background: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-right: 12px; /* Espaço entre checkbox e texto */
+}
+
+.checkbox-label:hover .checkmark {
+  border-color: #001871;
+  transform: scale(1.05);
 }
 
 .checkbox-input:checked + .checkmark {
   background: #001871;
   border-color: #001871;
+  animation: checkmarkPop 0.3s ease;
 }
 
 .checkbox-input:checked + .checkmark::after {
   content: '✓';
-  position: absolute;
   color: white;
   font-size: 14px;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
+  font-weight: bold;
+  line-height: 1;
 }
 
+/* Texto de ajuda */
+.checkbox-help {
+  display: block;
+  font-size: 0.8rem;
+  color: #666;
+  margin-top: 8px;
+  font-weight: normal;
+  font-style: italic;
+  padding-left: 34px; /* Alinha com o texto "Usuário ativo" */
+}
+
+/* Animações */
+@keyframes checkmarkPop {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.2);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+/* Responsividade */
+@media (max-width: 768px) {
+  .checkbox-group {
+    padding: 0.75rem;
+  }
+  
+  .checkmark {
+    width: 20px;
+    height: 20px;
+    margin-right: 10px;
+  }
+  
+  .checkbox-input:checked + .checkmark::after {
+    font-size: 12px;
+  }
+  
+  .checkbox-help {
+    padding-left: 30px;
+  }
+}
 .modal-footer {
   padding: 1.5rem;
   border-top: 1px solid #e1e5e9;

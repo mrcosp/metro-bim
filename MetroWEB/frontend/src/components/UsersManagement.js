@@ -24,7 +24,7 @@ function UsersManagement({ onBack }) {
       <!DOCTYPE html>
       <html>
       <head>
-        <title>Relatório de Usuários - Metro BIM</title>
+        <title>Relatório de usuários - Metrô SP</title>
         <style>
           body { 
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
@@ -390,7 +390,7 @@ function UsersManagement({ onBack }) {
                   />
                 </div>
 
-                <div className="form-group checkbox-group">
+               <div className="form-group checkbox-group">
                   <label className="checkbox-label">
                     <input
                       type="checkbox"
@@ -400,8 +400,9 @@ function UsersManagement({ onBack }) {
                       className="checkbox-input"
                     />
                     <span className="checkmark"></span>
-                    Usuário ativo
                   </label>
+                                      Usuário ativo
+
                 </div>
               </div>
             </div>
