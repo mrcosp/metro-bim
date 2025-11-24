@@ -1,11 +1,25 @@
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
+    id("kotlin-kapt")
+}
+
+repositories {
+    google()
+    mavenCentral()
+    maven { url = uri("https://jitpack.io") }
+
+    maven { url = uri("https://github.com/SceneView/maven-repo/raw/main/") }
+    maven { url = uri("https://raw.githubusercontent.com/SceneView/maven-repo/main/") }
 }
 
 android {
     namespace = "com.wepink.metroar"
     compileSdk = 36
+
+    buildFeatures {
+        viewBinding = true
+    }
 
     defaultConfig {
         applicationId = "com.wepink.metroar"
@@ -26,6 +40,8 @@ android {
             )
         }
     }
+
+
 
     packaging {
         resources {
@@ -82,7 +98,13 @@ dependencies {
     // DESUGARING (Permanece)
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.0.4")
 
-    // REMOVIDO: implementacao do mongodb-driver-sync
+    // ARSceneview for augmented reality capabilities
+    implementation("io.github.sceneview:arsceneview:0.10.0")
+
+    implementation ("com.github.bumptech.glide:glide:4.16.0")
+    kapt("com.github.bumptech.glide:compiler:4.16.0")
+
+// REMOVIDO: implementacao do mongodb-driver-sync
     // REMOVIDO: implementacao do org.mongodb:bson
 
     // --- TESTES ---

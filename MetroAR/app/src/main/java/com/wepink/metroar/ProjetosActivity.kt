@@ -1,63 +1,70 @@
 package com.wepink.metroar
 
+import android.content.Intent
 import android.os.Bundle
+import android.util.Log
 import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
+import androidx.recyclerview.widget.GridLayoutManager
+import androidx.recyclerview.widget.RecyclerView
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
 class ProjetosActivity : AppCompatActivity() {
+
+    private lateinit var recyclerProjects: RecyclerView
+    private val repo = Repository()  // <<< usa o serviço centralizado
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_projetos)
 
-        val btnAddProject = findViewById<ImageButton>(R.id.btnAddProject)
         val btnHome = findViewById<ImageButton>(R.id.btnHome)
-        val btnGallery = findViewById<ImageButton>(R.id.btnGallery)
+        val btnRefresh = findViewById<ImageButton>(R.id.btnRefresh)
 
-        btnAddProject.setOnClickListener {
-            // Infla o layout do diálogo
-            val dialogView = layoutInflater.inflate(R.layout.dialog_add_project, null)
+        recyclerProjects = findViewById(R.id.recyclerProjects)
 
-            // Cria o diálogo
-            val dialog = android.app.AlertDialog.Builder(this)
-                .setView(dialogView)
-                .setCancelable(false)
-                .create()
+        btnHome.setOnClickListener { finish() }
 
-            dialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
-            dialog.show()
+        btnRefresh.setOnClickListener {
+            fetchAndDisplayFolders()
+            Toast.makeText(this, "Atualizando…", Toast.LENGTH_SHORT).show()
+        }
 
-            // Referências dos elementos DENTRO do layout inflado (dialog_add_project.xml)
-            val btnClose = dialogView.findViewById<ImageButton>(R.id.btnCloseDialog)
-            val btnCreate = dialogView.findViewById<Button>(R.id.btnCreateProject)
-            val nameInput = dialogView.findViewById<EditText>(R.id.inputDialogName)
-            val dateInput = dialogView.findViewById<EditText>(R.id.inputDialogDate)
+        fetchAndDisplayFolders()
+    }
 
-            // Fechar o diálogo
-            btnClose.setOnClickListener {
-                dialog.dismiss()
-            }
-
-            // Criar projeto
-            btnCreate.setOnClickListener {
-                val nome = nameInput.text.toString()
-                val data = dateInput.text.toString()
-
-                if (nome.isNotEmpty() && data.isNotEmpty()) {
-                    Toast.makeText(this, "Projeto '$nome' criado em $data!", Toast.LENGTH_SHORT).show()
-                    dialog.dismiss()
+    private fun fetchAndDisplayFolders() {
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                val response = repo.fetchFolders()   // <<< usando o repository
+                if (response.isSuccessful && response.body() != null) {
+                    val folders = response.body()!!
+                    runOnUiThread { renderFolders(folders) }
                 } else {
-                    Toast.makeText(this, "Preencha todos os campos!", Toast.LENGTH_SHORT).show()
+                    Log.e("ProjetosActivity", "Erro: ${response.code()}")
+                }
+
+            } catch (e: Exception) {
+                e.printStackTrace()
+                runOnUiThread {
+                    Toast.makeText(
+                        this@ProjetosActivity,
+                        "Falha ao conectar ao servidor.",
+                        Toast.LENGTH_LONG
+                    ).show()
                 }
             }
         }
+    }
 
-        btnHome.setOnClickListener {
-            finish() // volta pra tela anterior
-        }
-
-        btnGallery.setOnClickListener {
-            Toast.makeText(this, "Abrir galeria", Toast.LENGTH_SHORT).show()
+    private fun renderFolders(folders: List<FolderResponse>) {
+        recyclerProjects.layoutManager = GridLayoutManager(this, 2)
+        recyclerProjects.adapter = FolderAdapter(folders) { folder ->
+            val intent = Intent(this, GaleriaActivity::class.java)
+            intent.putExtra("folderName", folder.name)
+            startActivity(intent)
         }
     }
 }

@@ -10,8 +10,8 @@ import androidx.appcompat.app.AppCompatActivity
 class LoginActivity : AppCompatActivity() {
 
     // Define your hardcoded credentials
-    private val VALID_USERNAME = "user"
-    private val VALID_PASSWORD = "password"
+    private val VALID_USERNAME = "admin@metro.com.br"
+    private val VALID_PASSWORD = "12345678910"
 
     private lateinit var usernameEditText: EditText
     private lateinit var passwordEditText: EditText
@@ -36,7 +36,7 @@ class LoginActivity : AppCompatActivity() {
                 finish()
             } else {
                 // Login failed
-                Toast.makeText(this, "Invalid username or password", Toast.LENGTH_LONG).show()
+                Toast.makeText(this, "Email ou CPF invalido.", Toast.LENGTH_LONG).show()
             }
         }
     }
