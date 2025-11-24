@@ -42,6 +42,8 @@
             android:value="required"
             tools:replace="android:value" />
         <activity android:name=".ARActivity" android:exported="false" />
+        <activity android:name=".ConfiguracoesActivity" />
+        <activity android:name=".FotoPreviewActivity" />
     </application>
 
 </manifest>

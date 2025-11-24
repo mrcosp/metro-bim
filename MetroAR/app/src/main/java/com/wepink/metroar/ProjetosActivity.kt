@@ -20,50 +20,16 @@ class ProjetosActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_projetos)
 
-        val btnAddProject = findViewById<ImageButton>(R.id.btnAddProject)
         val btnHome = findViewById<ImageButton>(R.id.btnHome)
-        val btnGallery = findViewById<ImageButton>(R.id.btnGallery)
+        val btnRefresh = findViewById<ImageButton>(R.id.btnRefresh)
 
         recyclerProjects = findViewById(R.id.recyclerProjects)
 
         btnHome.setOnClickListener { finish() }
 
-        btnGallery.setOnClickListener {
-            Toast.makeText(this, "Selecione uma pasta para visualizar imagens.", Toast.LENGTH_SHORT).show()
-        }
-
-        btnAddProject.setOnClickListener {
-            val name = findViewById<EditText>(R.id.inputProjectName).text.toString().trim()
-
-            if (name.isEmpty()) {
-                Toast.makeText(this, "Digite um nome para a pasta.", Toast.LENGTH_SHORT).show()
-                return@setOnClickListener
-            }
-
-            CoroutineScope(Dispatchers.IO).launch {
-                try {
-                    val result = repo.createFolder(name)
-
-                    if (result.isSuccessful) {
-                        runOnUiThread {
-                            Toast.makeText(this@ProjetosActivity, "Pasta criada!", Toast.LENGTH_SHORT).show()
-                            fetchAndDisplayFolders() // atualiza a lista
-                        }
-                    } else {
-                        runOnUiThread {
-                            Toast.makeText(
-                                this@ProjetosActivity,
-                                "Erro: ${result.errorBody()?.string()}",
-                                Toast.LENGTH_LONG
-                            ).show()                        }
-                    }
-
-                } catch (e: Exception) {
-                    runOnUiThread {
-                        Toast.makeText(this@ProjetosActivity, "Falha ao conectar.", Toast.LENGTH_LONG).show()
-                    }
-                }
-            }
+        btnRefresh.setOnClickListener {
+            fetchAndDisplayFolders()
+            Toast.makeText(this, "Atualizando…", Toast.LENGTH_SHORT).show()
         }
 
         fetchAndDisplayFolders()

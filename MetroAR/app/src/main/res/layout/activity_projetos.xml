@@ -44,16 +44,6 @@
                     android:layout_height="wrap_content"
                     android:inputType="text" />
 
-                <ImageButton
-                    android:id="@+id/btnAddProject"
-                    android:src="@drawable/ic_add"
-                    android:backgroundTint="#22C55E"
-                    android:background="@drawable/add_button"
-                    android:contentDescription="@string/adicionar_projeto"
-                    android:layout_width="48dp"
-                    android:layout_height="48dp"
-                    android:layout_marginStart="8dp"
-                    app:tint="#FFFFFF" />
             </LinearLayout>
 
             <TextView
@@ -97,13 +87,13 @@
             app:tint="#FFFFFF" />
 
         <ImageButton
-            android:id="@+id/btnGallery"
-            android:src="@drawable/ic_gallery"
+            android:id="@+id/btnRefresh"
+            android:src="@drawable/ic_refresh"
             android:background="@android:color/transparent"
             android:layout_width="48dp"
             android:layout_height="48dp"
             android:padding="8dp"
-            android:layout_marginStart="24dp"
+            android:layout_marginStart="16dp"
             app:tint="#FFFFFF" />
     </LinearLayout>
 
